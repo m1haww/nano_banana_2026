@@ -1,0 +1,460 @@
+//
+//  GalleryView.swift
+//  AI Image Generator
+//
+
+import SwiftUI
+import PhotosUI
+
+struct GalleryView: View {
+    var onCreateVariant: (String) -> Void = { _ in }
+
+    @ObservedObject private var gallery = ImagePromptManager.shared
+    @State private var discoverItems: [DiscoverItem] = []
+    @State private var discoverLoading = true
+    @State private var discoverError: String?
+    @State private var selectedDiscoverItem: DiscoverItem?
+    @State private var selectedItem: GalleryHistoryItem?
+    @State private var shareItems: [Any] = []
+    @State private var showShareSheet = false
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 14),
+        GridItem(.flexible(), spacing: 14)
+    ]
+
+    /// Înălțimi Pinterest: stânga tall–short–tall, dreapta short–tall–short.
+    private let leftHeights: [CGFloat] = [220, 160, 220, 160, 220, 160]
+    private let rightHeights: [CGFloat] = [160, 220, 160, 220, 160, 220]
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 24) {
+                VStack(spacing: 6) {
+                    Text("Discover")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.appText)
+                    Text("Get inspired")
+                        .font(.system(size: 15, weight: .regular, design: .rounded))
+                        .foregroundStyle(Color.appTextSecondary)
+                }
+                .padding(.top, 20)
+
+                // Pinterest-style discover grid (din nano-banana)
+                if discoverLoading {
+                    HStack(alignment: .top, spacing: 8) {
+                        discoverColumnPlaceholder(heights: leftHeights)
+                        discoverColumnPlaceholder(heights: rightHeights)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                } else if let err = discoverError {
+                    Text(err)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.appTextSecondary)
+                        .padding(.vertical, 20)
+                } else if !discoverItems.isEmpty {
+                    DiscoverPinterestGrid(
+                        items: discoverItems,
+                        leftHeights: leftHeights,
+                        rightHeights: rightHeights,
+                        onSelect: { selectedDiscoverItem = $0 }
+                    )
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.bottom, 120)
+        }
+        .background(Color.appBackground)
+        .onAppear {
+            loadDiscover()
+        }
+        .fullScreenCover(item: $selectedDiscoverItem) { item in
+            DiscoverDetailView(
+                item: item,
+                onDismiss: { selectedDiscoverItem = nil },
+                onCreateVariant: {
+                    onCreateVariant(item.prompt)
+                    selectedDiscoverItem = nil
+                }
+            )
+        }
+        .fullScreenCover(item: $selectedItem) { item in
+            GalleryDetailView(
+                item: item,
+                onDismiss: { selectedItem = nil },
+                onShare: {
+                    if let img = gallery.loadImage(from: item.imagePath) {
+                        shareItems = [img, item.prompt]
+                        showShareSheet = true
+                    }
+                }
+            )
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if !shareItems.isEmpty {
+                ShareSheet(items: shareItems)
+            }
+        }
+    }
+
+    /// Afișează întâi din cache (instant), apoi revalidează în fundal; când backend-ul se schimbă, lista se actualizează.
+    private func loadDiscover() {
+        if let cached = DiscoverCache.load(), !cached.isEmpty {
+            discoverItems = cached
+            discoverLoading = false
+            discoverError = nil
+        } else {
+            discoverLoading = true
+            discoverError = nil
+        }
+
+        GeminiAPIService.shared.fetchDiscover { result in
+            discoverLoading = false
+            switch result {
+            case .success(let items):
+                DiscoverCache.save(items)
+                discoverItems = items
+                discoverError = nil
+            case .failure(let err):
+                if discoverItems.isEmpty {
+                    discoverError = err.localizedDescription
+                }
+                // Dacă avem deja cache, îl păstrăm; doar nu afișăm eroare peste el
+            }
+        }
+    }
+
+    private func discoverColumnPlaceholder(heights: [CGFloat]) -> some View {
+        let w = (UIScreen.main.bounds.width - 16 - 16 - 8) / 2
+        return VStack(spacing: 8) {
+            ForEach(Array(heights.prefix(3).enumerated()), id: \.offset) { _, h in
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.appCard)
+                    .frame(width: w, height: h)
+                    .overlay(ProgressView().tint(Color.appAccent))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Pinterest-style grid (design nano-banana: două coloane, înălțimi alternate)
+private struct DiscoverPinterestGrid: View {
+    let items: [DiscoverItem]
+    let leftHeights: [CGFloat]
+    let rightHeights: [CGFloat]
+    let onSelect: (DiscoverItem) -> Void
+
+    private var columnWidth: CGFloat {
+        (UIScreen.main.bounds.width - 16 - 16 - 8) / 2
+    }
+
+    private var leftColumnItems: [(DiscoverItem, CGFloat)] {
+        items.enumerated().compactMap { index, item in
+            guard index % 2 == 0 else { return nil }
+            let hIndex = index / 2
+            let h = hIndex < leftHeights.count ? leftHeights[hIndex] : leftHeights.last ?? 180
+            return (item, h)
+        }
+    }
+
+    private var rightColumnItems: [(DiscoverItem, CGFloat)] {
+        items.enumerated().compactMap { index, item in
+            guard index % 2 == 1 else { return nil }
+            let hIndex = index / 2
+            let h = hIndex < rightHeights.count ? rightHeights[hIndex] : rightHeights.last ?? 180
+            return (item, h)
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(spacing: 8) {
+                ForEach(leftColumnItems, id: \.0.id) { item, height in
+                    Button {
+                        onSelect(item)
+                    } label: {
+                        DiscoverCard(item: item, height: height, width: columnWidth)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(spacing: 8) {
+                ForEach(rightColumnItems, id: \.0.id) { item, height in
+                    Button {
+                        onSelect(item)
+                    } label: {
+                        DiscoverCard(item: item, height: height, width: columnWidth)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+}
+
+// MARK: - Card discover (imagine + gradient + subtitle, ca în nano-banana GalleryPage)
+private struct DiscoverCard: View {
+    let item: DiscoverItem
+    let height: CGFloat
+    let width: CGFloat
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            CachedDiscoverImageView(urlString: item.image, contentMode: .fill)
+                .frame(width: width, height: height)
+                .clipped()
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.85),
+                    Color.black.opacity(0.4),
+                    Color.clear
+                ],
+                startPoint: .bottom,
+                endPoint: .top
+            )
+
+            Text(item.subtitle)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+        }
+        .frame(width: width, height: height)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(Color.appCard)
+    }
+}
+
+// MARK: - Detail discover: imagine, prompt, subtitle, „Use this prompt”, Create variant
+struct DiscoverDetailView: View {
+    let item: DiscoverItem
+    let onDismiss: () -> Void
+    var onCreateVariant: (() -> Void)? = nil
+    @State private var showCopiedAlert = false
+
+    var body: some View {
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.appText)
+                            .frame(width: 44, height: 44)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        CachedDiscoverImageView(urlString: item.image, contentMode: .fit)
+                            .frame(minHeight: 200)
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(item.subtitle)
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Color.appAccent)
+                            Text(item.prompt)
+                                .font(.system(size: 16, weight: .regular, design: .rounded))
+                                .foregroundStyle(Color.appText)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(Color.appCard)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                        Button {
+                            UIPasteboard.general.string = item.prompt
+                            showCopiedAlert = true
+                        } label: {
+                            Label("Use this prompt", systemImage: "doc.on.doc")
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Color.appAccent)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                        }
+
+                        if onCreateVariant != nil {
+                            Button {
+                                onCreateVariant?()
+                                onDismiss()
+                            } label: {
+                                Label("Create variant", systemImage: "wand.and.stars")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color.appBackground)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.appAccent)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
+                }
+            }
+        }
+        .alert("Copied", isPresented: $showCopiedAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Prompt copied. Go to Home to paste and create.")
+        }
+    }
+}
+
+private struct GalleryThumbCard: View {
+    let item: GalleryHistoryItem
+    @ObservedObject private var gallery = ImagePromptManager.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ZStack {
+                if let img = gallery.loadImage(from: item.imagePath) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    Color.appPromptBackground
+                        .overlay(
+                            Image(systemName: "photo")
+                                .font(.title)
+                                .foregroundStyle(Color.appTextSecondary)
+                        )
+                }
+            }
+            .frame(height: 200)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+
+            Text(item.prompt)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(Color.appTextSecondary)
+                .lineLimit(2)
+                .padding(.top, 8)
+                .padding(.horizontal, 4)
+        }
+        .padding(12)
+        .background(Color.appCard)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+    }
+}
+
+struct GalleryDetailView: View {
+    let item: GalleryHistoryItem
+    let onDismiss: () -> Void
+    let onShare: () -> Void
+    @ObservedObject private var gallery = ImagePromptManager.shared
+    @State private var showSaveConfirmation = false
+    @State private var showDeleteConfirm = false
+
+    var body: some View {
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.appText)
+                            .frame(width: 44, height: 44)
+                    }
+                    Spacer()
+                    Button(action: onShare) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.appText)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        if let img = gallery.loadImage(from: item.imagePath) {
+                            Image(uiImage: img)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .clipShape(RoundedRectangle(cornerRadius: 20))
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Prompt")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Color.appTextSecondary)
+                            Text(item.prompt)
+                                .font(.system(size: 16, weight: .regular, design: .rounded))
+                                .foregroundStyle(Color.appText)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(Color.appCard)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+
+                        Button {
+                            if let img = gallery.loadImage(from: item.imagePath) {
+                                UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
+                                showSaveConfirmation = true
+                            }
+                        } label: {
+                            Label("Save to Photos", systemImage: "square.and.arrow.down")
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Color.appAccent)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                        }
+
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                        }
+                        .padding(.bottom, 40)
+                    }
+                    .padding(.horizontal, 20)
+                }
+            }
+        }
+        .alert("Saved", isPresented: $showSaveConfirmation) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Image saved to Photos.")
+        }
+        .alert("Delete image?", isPresented: $showDeleteConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                gallery.removeGalleryItem(id: item.id)
+                onDismiss()
+            }
+        } message: {
+            Text("This cannot be undone.")
+        }
+    }
+}
+
+#Preview {
+    GalleryView()
+}
