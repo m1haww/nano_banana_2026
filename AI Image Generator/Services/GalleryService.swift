@@ -1,5 +1,5 @@
 //
-//  ImagePromptManager.swift
+//  GalleryService.swift
 //  AI Image Generator
 //
 
@@ -7,10 +7,11 @@ import Foundation
 import UIKit
 import Combine
 
-final class ImagePromptManager: ObservableObject {
-    static let shared = ImagePromptManager()
+/// Saves generated images under **Documents/SavedImages/** and appends metadata to **Documents/galleryHistory.json**.
+final class GalleryService: ObservableObject {
+    static let shared = GalleryService()
 
-    @Published var galleryHistory: [GalleryHistoryItem] = []
+    @Published private(set) var galleryHistory: [GalleryHistoryItem] = []
 
     private let documentsDirectory: URL
     private let galleryHistoryFileURL: URL
@@ -49,6 +50,7 @@ final class ImagePromptManager: ObservableObject {
         }
     }
 
+    @discardableResult
     func saveImage(_ image: UIImage, withPrompt prompt: String, originalImagePath: String? = nil) -> String? {
         let fileName = "\(UUID().uuidString).jpg"
         let fileURL = imagesDirectory.appendingPathComponent(fileName)

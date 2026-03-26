@@ -1,22 +1,16 @@
-//
-//  GalleryView.swift
-//  AI Image Generator
-//
-
 import SwiftUI
 import PhotosUI
+import UIKit
 
 struct GalleryView: View {
     var onCreateVariant: (String) -> Void = { _ in }
 
-    @ObservedObject private var gallery = ImagePromptManager.shared
+    @ObservedObject private var gallery = GalleryService.shared
     @State private var discoverItems: [DiscoverItem] = []
     @State private var discoverLoading = true
     @State private var discoverError: String?
     @State private var selectedDiscoverItem: DiscoverItem?
     @State private var selectedItem: GalleryHistoryItem?
-    @State private var shareItems: [Any] = []
-    @State private var showShareSheet = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 14),
@@ -28,43 +22,39 @@ struct GalleryView: View {
     private let rightHeights: [CGFloat] = [160, 220, 160, 220, 160, 220]
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 24) {
-                VStack(spacing: 6) {
-                    Text("Discover")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.appText)
-                    Text("Get inspired")
-                        .font(.system(size: 15, weight: .regular, design: .rounded))
-                        .foregroundStyle(Color.appTextSecondary)
-                }
-                .padding(.top, 20)
+        VStack(spacing: 0) {
+            // Header fix (stil Nano Banana, ca Profile)
+            galleryHeader
 
-                // Pinterest-style discover grid (din nano-banana)
-                if discoverLoading {
-                    HStack(alignment: .top, spacing: 8) {
-                        discoverColumnPlaceholder(heights: leftHeights)
-                        discoverColumnPlaceholder(heights: rightHeights)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 24) {
+                    // Pinterest-style discover grid (din nano-banana)
+                    if discoverLoading {
+                        HStack(alignment: .top, spacing: 8) {
+                            discoverColumnPlaceholder(heights: leftHeights)
+                            discoverColumnPlaceholder(heights: rightHeights)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                    } else if let err = discoverError {
+                        Text(err)
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(Color.appTextSecondary)
+                            .padding(.vertical, 20)
+                    } else if !discoverItems.isEmpty {
+                        DiscoverPinterestGrid(
+                            items: discoverItems,
+                            leftHeights: leftHeights,
+                            rightHeights: rightHeights,
+                            onSelect: { selectedDiscoverItem = $0 }
+                        )
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
-                } else if let err = discoverError {
-                    Text(err)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.appTextSecondary)
-                        .padding(.vertical, 20)
-                } else if !discoverItems.isEmpty {
-                    DiscoverPinterestGrid(
-                        items: discoverItems,
-                        leftHeights: leftHeights,
-                        rightHeights: rightHeights,
-                        onSelect: { selectedDiscoverItem = $0 }
-                    )
-                }
 
-                Spacer(minLength: 0)
+                    Spacer(minLength: 0)
+                }
+                .padding(.top, 24)
+                .padding(.bottom, 20)
             }
-            .padding(.bottom, 120)
         }
         .background(Color.appBackground)
         .onAppear {
@@ -86,17 +76,29 @@ struct GalleryView: View {
                 onDismiss: { selectedItem = nil },
                 onShare: {
                     if let img = gallery.loadImage(from: item.imagePath) {
-                        shareItems = [img, item.prompt]
-                        showShareSheet = true
+                        ShareService.shared.present(items: [img, item.prompt])
                     }
                 }
             )
         }
-        .sheet(isPresented: $showShareSheet) {
-            if !shareItems.isEmpty {
-                ShareSheet(items: shareItems)
-            }
+    }
+
+    // MARK: - Header (toolbar fix, ca Profile)
+
+    private var galleryHeader: some View {
+        VStack(spacing: 6) {
+            Text("Discover")
+                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.appText)
+            Text("Get inspired")
+                .font(.system(size: 15, weight: .regular, design: .rounded))
+                .foregroundStyle(Color.appTextSecondary)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 16)
+        .background(Color.appBackground)
     }
 
     /// Afișează întâi din cache (instant), apoi revalidează în fundal; când backend-ul se schimbă, lista se actualizează.
@@ -212,16 +214,6 @@ private struct DiscoverCard: View {
                 .frame(width: width, height: height)
                 .clipped()
 
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.85),
-                    Color.black.opacity(0.4),
-                    Color.clear
-                ],
-                startPoint: .bottom,
-                endPoint: .top
-            )
-
             Text(item.subtitle)
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
@@ -233,16 +225,13 @@ private struct DiscoverCard: View {
         }
         .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .background(Color.appCard)
     }
 }
 
-// MARK: - Detail discover: imagine, prompt, subtitle, „Use this prompt”, Create variant
 struct DiscoverDetailView: View {
     let item: DiscoverItem
     let onDismiss: () -> Void
     var onCreateVariant: (() -> Void)? = nil
-    @State private var showCopiedAlert = false
 
     var body: some View {
         ZStack {
@@ -252,7 +241,7 @@ struct DiscoverDetailView: View {
                 HStack {
                     Button(action: onDismiss) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Color.appText)
                             .frame(width: 44, height: 44)
                     }
@@ -281,17 +270,6 @@ struct DiscoverDetailView: View {
                         .background(Color.appCard)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                        Button {
-                            UIPasteboard.general.string = item.prompt
-                            showCopiedAlert = true
-                        } label: {
-                            Label("Use this prompt", systemImage: "doc.on.doc")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color.appAccent)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                        }
-
                         if onCreateVariant != nil {
                             Button {
                                 onCreateVariant?()
@@ -313,17 +291,12 @@ struct DiscoverDetailView: View {
                 }
             }
         }
-        .alert("Copied", isPresented: $showCopiedAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Prompt copied. Go to Home to paste and create.")
-        }
     }
 }
 
 private struct GalleryThumbCard: View {
     let item: GalleryHistoryItem
-    @ObservedObject private var gallery = ImagePromptManager.shared
+    @ObservedObject private var gallery = GalleryService.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -363,7 +336,7 @@ struct GalleryDetailView: View {
     let item: GalleryHistoryItem
     let onDismiss: () -> Void
     let onShare: () -> Void
-    @ObservedObject private var gallery = ImagePromptManager.shared
+    @ObservedObject private var gallery = GalleryService.shared
     @State private var showSaveConfirmation = false
     @State private var showDeleteConfirm = false
 
@@ -375,14 +348,14 @@ struct GalleryDetailView: View {
                 HStack {
                     Button(action: onDismiss) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Color.appText)
                             .frame(width: 44, height: 44)
                     }
                     Spacer()
                     Button(action: onShare) {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(Color.appText)
                     }
                 }
@@ -413,24 +386,78 @@ struct GalleryDetailView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
 
-                        Button {
-                            if let img = gallery.loadImage(from: item.imagePath) {
-                                UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
-                                showSaveConfirmation = true
-                            }
-                        } label: {
-                            Label("Save to Photos", systemImage: "square.and.arrow.down")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color.appAccent)
+                        VStack(spacing: 12) {
+                            Button {
+                                if let img = gallery.loadImage(from: item.imagePath) {
+                                    UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
+                                    showSaveConfirmation = true
+                                }
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "square.and.arrow.down")
+                                        .font(.system(size: 17, weight: .semibold))
+                                    Text("Save to Photos")
+                                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                }
+                                .foregroundStyle(Color.appBackground)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                        }
+                                .padding(.vertical, 16)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color.appAccent, Color.appAccentSecondary],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.22), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
 
-                        Button(role: .destructive) {
-                            showDeleteConfirm = true
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                            Button {
+                                showDeleteConfirm = true
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 16, weight: .semibold))
+                                    Text("Delete")
+                                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                }
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 1, green: 0.38, blue: 0.38),
+                                            Color(red: 0.85, green: 0.22, blue: 0.25),
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .fill(Color.red.opacity(0.1))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.red.opacity(0.55),
+                                                    Color.red.opacity(0.25),
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1.2
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
                         .padding(.bottom, 40)
                     }
@@ -453,8 +480,4 @@ struct GalleryDetailView: View {
             Text("This cannot be undone.")
         }
     }
-}
-
-#Preview {
-    GalleryView()
 }

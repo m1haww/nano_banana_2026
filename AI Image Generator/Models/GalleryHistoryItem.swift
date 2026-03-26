@@ -1,8 +1,3 @@
-//
-//  GalleryHistoryItem.swift
-//  AI Image Generator
-//
-
 import Foundation
 
 struct GalleryHistoryItem: Codable, Identifiable {

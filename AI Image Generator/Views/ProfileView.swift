@@ -2,14 +2,16 @@
 //  ProfileView.swift
 //  AI Image Generator
 //
-//  Design inspirat din Nano Banana Settings: header fix, card cu bordură aurie, rânduri cu icon + chevron.
+//  Header fix, summary card, vertical gallery history from local JSON + SavedImages.
 //
 
 import SwiftUI
 
 struct ProfileView: View {
-    @ObservedObject private var api = GeminiAPIService.shared
-    @ObservedObject private var gallery = ImagePromptManager.shared
+    @ObservedObject private var gallery = GalleryService.shared
+    @ObservedObject private var subscription = SubscriptionService.shared
+
+    @State private var selectedGalleryItem: GalleryHistoryItem?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,21 +20,87 @@ struct ProfileView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 24) {
-                    // Card tip „Credits” – Images saved
                     imagesCard
 
-                    // Card / rânduri setări (Version, API, link-uri)
-                    settingsRows
+                    shopEntryRow
+
+                    if !gallery.galleryHistory.isEmpty {
+                        recentSavedList
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 24)
-                .padding(.bottom, 120)
+                .padding(.bottom, 30)
             }
         }
         .background(Color.appBackground)
+        .onAppear { subscription.fetchStatus() }
+        .fullScreenCover(item: $selectedGalleryItem) { item in
+            GalleryDetailView(
+                item: item,
+                onDismiss: { selectedGalleryItem = nil },
+                onShare: {
+                    if let img = gallery.loadImage(from: item.imagePath) {
+                        ShareService.shared.present(items: [img, item.prompt])
+                    }
+                }
+            )
+        }
     }
 
-    // MARK: - Header (toolbar fix, ca în Nano Banana)
+    private var shopEntryRow: some View {
+        Button {
+            subscription.showShop = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "cart.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(Color.appAccent)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Credits & shop")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.appText)
+                    Text("\(subscription.credits) credits available")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.appTextSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.appTextSecondary)
+            }
+            .padding(18)
+            .background(Color.appCard)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.appDivider.opacity(0.7), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var recentSavedList: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Your saves")
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.appText)
+                Spacer()
+            }
+
+            VStack(spacing: 16) {
+                ForEach(gallery.galleryHistory.prefix(48)) { item in
+                    Button {
+                        selectedGalleryItem = item
+                    } label: {
+                        ProfileHistoryCard(item: item)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
 
     private var profileHeader: some View {
         HStack {
@@ -48,115 +116,182 @@ struct ProfileView: View {
         .background(Color.appBackground)
     }
 
-    // MARK: - Card „Images” (ca Credits card din Nano Banana)
+    // MARK: - Library summary (hero card)
 
     private var imagesCard: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 16) {
-                HStack(spacing: 12) {
-                    Image(systemName: "photo.stack.fill")
-                        .font(.system(size: 22))
-                        .foregroundStyle(Color.appAccent)
-                        .frame(width: 36, height: 36)
+        let corner: CGFloat = 20
+        let count = gallery.galleryHistory.count
 
-                    Text("Images")
-                        .font(.system(size: 20, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.appText)
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(gallery.galleryHistory.count)")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.appText)
-                    Text("saved")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.appTextSecondary)
-                }
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.appCard)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.appAccent, lineWidth: 1.5)
+        return ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.appCard,
+                            Color.appCard.opacity(0.92),
+                            Color(hex: "232019"),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-            )
+                )
 
-            // API status sub card (scurt)
-            HStack(spacing: 8) {
-                Image(systemName: api.getAPIKey() != nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(api.getAPIKey() != nil ? Color.appAccent : Color.orange)
-                Text(api.getAPIKey() != nil ? "API connected" : "API key not set")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.appTextSecondary)
-            }
-        }
-    }
+            // Soft accent glow (top-right)
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.appAccent.opacity(0.22),
+                            Color.appAccent.opacity(0.04),
+                            .clear,
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 120
+                    )
+                )
+                .frame(width: 200, height: 200)
+                .offset(x: 40, y: -70)
+                .allowsHitTesting(false)
 
-    // MARK: - Rânduri setări (un card cu Version, App, Backend – stil Nano Banana)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .center, spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.appAccent.opacity(0.14))
+                            .frame(width: 52, height: 52)
+                        Circle()
+                            .stroke(Color.appAccent.opacity(0.35), lineWidth: 1)
+                            .frame(width: 52, height: 52)
+                        Image(systemName: "photo.stack.fill")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(Color.appAccent)
+                    }
 
-    private var settingsRows: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 0) {
-                settingsRow(icon: "checkmark.circle.fill", title: "Version", value: "1.0")
-                Rectangle().fill(Color.appDivider).frame(height: 1).padding(.leading, 56)
-                settingsRow(icon: "sparkles", title: "App", value: "PigFig")
-                Rectangle().fill(Color.appDivider).frame(height: 1).padding(.leading, 56)
-                settingsRow(icon: "server.rack", title: "Backend", value: "Railway")
-            }
-            .background(Color.appCard)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.appDivider.opacity(0.6), lineWidth: 1)
-            )
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Your library")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.appAccent.opacity(0.95))
+                            .textCase(.uppercase)
+                            .tracking(0.6)
+                        Text("Creations kept on this device")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(Color.appTextSecondary)
+                    }
 
-            // Footer text (ca în Nano Banana)
-            VStack(spacing: 8) {
-                HStack(spacing: 4) {
-                    Text("Made with")
-                        .foregroundStyle(Color.appTextSecondary)
-                    Text("❤️")
-                    Text("by PigFig")
-                        .foregroundStyle(Color.appTextSecondary)
+                    Spacer(minLength: 0)
                 }
-                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .padding(.bottom, 20)
 
-                Text("Powered by Poyo · OpenAI")
+                Text("\(count)")
+                    .font(.system(size: 52, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.appText)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .contentTransition(.numericText())
+                    .monospacedDigit()
+
+                Text(count == 1 ? "image saved" : "images saved")
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.appTextSecondary)
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .padding(.top, 6)
             }
-            .padding(.top, 12)
+            .padding(22)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.appAccent.opacity(0.5),
+                            Color.appAccent.opacity(0.12),
+                            Color.appDivider.opacity(0.45),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: .black.opacity(0.45), radius: 18, x: 0, y: 10)
+        .shadow(color: Color.appAccent.opacity(0.07), radius: 22, x: 0, y: 4)
     }
 
-    private func settingsRow(icon: String, title: String, value: String) -> some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundStyle(Color.appAccent)
-                .font(.system(size: 18, weight: .bold))
-                .frame(width: 24)
-
-            Text(title)
-                .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.appText)
-
-            Spacer()
-
-            Text(value)
-                .font(.system(size: 16, weight: .regular, design: .rounded))
-                .foregroundStyle(Color.appTextSecondary)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-    }
 }
 
-#Preview {
-    ProfileView()
+// MARK: - History row card
+
+private struct ProfileHistoryCard: View {
+    let item: GalleryHistoryItem
+    @ObservedObject private var gallery = GalleryService.shared
+
+    private let corner: CGFloat = 20
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ZStack {
+                if let img = gallery.loadImage(from: item.imagePath) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 200, maxHeight: 260)
+                        .clipped()
+                } else {
+                    Color.appPromptBackground
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                        .overlay(
+                            Image(systemName: "photo.on.rectangle.angled")
+                                .font(.system(size: 36, weight: .light))
+                                .foregroundStyle(Color.appTextSecondary.opacity(0.6))
+                        )
+                }
+
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        Color.appBackground.opacity(0.15),
+                        Color.appBackground.opacity(0.55),
+                    ],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+                .allowsHitTesting(false)
+            }
+            .frame(maxWidth: .infinity)
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: corner,
+                    topTrailingRadius: corner
+                )
+            )
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(item.prompt)
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color.appText)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.appAccent.opacity(0.9))
+                    Text(item.relativeDate)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.appTextSecondary)
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.appCard)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+        .shadow(color: .black.opacity(0.45), radius: 18, x: 0, y: 10)
+    }
 }

@@ -1,8 +1,3 @@
-//
-//  PromptCategory.swift
-//  AI Image Generator
-//
-
 import Foundation
 
 struct PromptCategory: Identifiable {

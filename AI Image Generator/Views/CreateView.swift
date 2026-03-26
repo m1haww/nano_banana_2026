@@ -8,8 +8,6 @@ import PhotosUI
 
 struct CreateView: View {
     @StateObject private var viewModel = CreateViewModel()
-    @State private var shareItems: [Any] = []
-    @State private var showShareSheet = false
     @State private var showSaveConfirmation = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @FocusState private var promptFocused: Bool
@@ -71,8 +69,7 @@ struct CreateView: View {
                                 }
                                 Button {
                                     if let img = viewModel.generatedImage {
-                                        shareItems = [img, viewModel.prompt]
-                                        showShareSheet = true
+                                        ShareService.shared.present(items: [img, viewModel.prompt])
                                     }
                                 } label: {
                                     Label("Share", systemImage: "square.and.arrow.up")
@@ -220,30 +217,10 @@ struct CreateView: View {
         }
         .background(Color.appBackground)
         .onTapGesture { promptFocused = false }
-        .sheet(isPresented: $showShareSheet) {
-            if !shareItems.isEmpty {
-                ShareSheet(items: shareItems)
-            }
-        }
         .alert("Saved", isPresented: $showSaveConfirmation) {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Image saved to Photos.")
         }
     }
-}
-
-// Share sheet wrapper
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
-#Preview {
-    CreateView()
 }

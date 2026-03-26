@@ -1,10 +1,4 @@
-//
-//  ExplorePromptsView.swift
-//  AI Image Generator
-//
-
 import SwiftUI
-import PhotosUI
 
 struct PromptType: Identifiable {
     let id = UUID()
@@ -14,48 +8,44 @@ struct PromptType: Identifiable {
 }
 
 private let promptTypes: [PromptType] = [
-    PromptType(emoji: "🔥", label: "Sexy",      gradient: [Color(hex: "E8453C"), Color(hex: "F5785A")]),
-    PromptType(emoji: "✨", label: "Fantasy",    gradient: [Color(hex: "7C3AED"), Color(hex: "A78BFA")]),
-    PromptType(emoji: "🎨", label: "Art",        gradient: [Color(hex: "2563EB"), Color(hex: "60A5FA")]),
-    PromptType(emoji: "🌿", label: "Nature",     gradient: [Color(hex: "059669"), Color(hex: "34D399")]),
-    PromptType(emoji: "🤖", label: "Sci-Fi",     gradient: [Color(hex: "0891B2"), Color(hex: "67E8F9")]),
-    PromptType(emoji: "👤", label: "Portrait",   gradient: [Color(hex: "D97706"), Color(hex: "FCD34D")]),
-    PromptType(emoji: "🌃", label: "Cyberpunk",  gradient: [Color(hex: "DB2777"), Color(hex: "F472B6")]),
-    PromptType(emoji: "📸", label: "Realistic",  gradient: [Color(hex: "6366F1"), Color(hex: "A5B4FC")]),
-    PromptType(emoji: "🎭", label: "Anime",      gradient: [Color(hex: "EC4899"), Color(hex: "F9A8D4")]),
-    PromptType(emoji: "💎", label: "Luxury",     gradient: [Color(hex: "B45309"), Color(hex: "F59E0B")]),
+    PromptType(emoji: "🔥", label: "Sexy", gradient: [Color(hex: "E8453C"), Color(hex: "F5785A")]),
+    PromptType(emoji: "✨", label: "Fantasy", gradient: [Color(hex: "7C3AED"), Color(hex: "A78BFA")]),
+    PromptType(emoji: "🎨", label: "Art", gradient: [Color(hex: "2563EB"), Color(hex: "60A5FA")]),
+    PromptType(emoji: "🌿", label: "Nature", gradient: [Color(hex: "059669"), Color(hex: "34D399")]),
+    PromptType(emoji: "🤖", label: "Sci-Fi", gradient: [Color(hex: "0891B2"), Color(hex: "67E8F9")]),
+    PromptType(emoji: "👤", label: "Portrait", gradient: [Color(hex: "D97706"), Color(hex: "FCD34D")]),
+    PromptType(emoji: "🌃", label: "Cyberpunk", gradient: [Color(hex: "DB2777"), Color(hex: "F472B6")]),
+    PromptType(emoji: "📸", label: "Realistic", gradient: [Color(hex: "6366F1"), Color(hex: "A5B4FC")]),
+    PromptType(emoji: "🎭", label: "Anime", gradient: [Color(hex: "EC4899"), Color(hex: "F9A8D4")]),
+    PromptType(emoji: "💎", label: "Luxury", gradient: [Color(hex: "B45309"), Color(hex: "F59E0B")]),
 ]
 
 struct ExplorePromptsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.hideTabBarBinding) private var hideTabBarBinding
     let currentPrompt: String
     let onSelectPrompt: (String) -> Void
 
     @State private var inputText: String = ""
     @State private var selectedType: PromptType? = nil
-    @State private var selectedPhotoItem: PhotosPickerItem? = nil
-    @State private var attachedImage: UIImage? = nil
     @FocusState private var inputFocused: Bool
 
-    @State private var chatMessages: [(role: String, content: String)] = []
-    @State private var isSending: Bool = false
-    @State private var chatError: String? = nil
+    @State private var generatedPrompt: String = ""
+    @State private var isGenerating: Bool = false
+    @State private var generationError: String? = nil
 
-    private let api = GeminiAPIService.shared
+    private let openAIService = OpenAIService.shared
     private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 9),
+        GridItem(.flexible(), spacing: 9),
+        GridItem(.flexible(), spacing: 9),
+        GridItem(.flexible(), spacing: 9),
     ]
-
+    
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.appBackground
                 .ignoresSafeArea()
 
-            // Imaginea pe întregul ecran ca background, cover
             Image("1")
                 .resizable()
                 .scaledToFill()
@@ -65,11 +55,10 @@ struct ExplorePromptsView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Back
                 HStack {
                     Button { dismiss() } label: {
-                        Image(systemName: "arrow.left")
-                            .font(.system(size: 20, weight: .medium))
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Color.appText)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
@@ -78,108 +67,75 @@ struct ExplorePromptsView: View {
                     Spacer()
                 }
                 .padding(.horizontal, 8)
-                .padding(.top, 4)
 
                 ScrollView(showsIndicators: false) {
-                VStack(spacing: 32) {
-                    // Sphere + title
-                    VStack(spacing: 20) {
-                        HStack(spacing: 8) {
-                            ForEach(0..<4, id: \.self) { _ in
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 22))
+                    VStack(spacing: 32) {
+                        VStack(spacing: 20) {
+                            HStack(spacing: 8) {
+                                ForEach(0..<4, id: \.self) { _ in
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundStyle(Color.appAccent)
+                                }
+                            }
+                            .padding(.top, 24)
+
+                            Text("What would you\nlike to create?")
+                                .font(.system(size: 26, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.appText)
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(4)
+
+                            VStack(spacing: 6) {
+                                Text("Your AI prompt helper")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.appAccent)
+                                Text("Pick a style, describe your idea, and we'll\ncraft the perfect prompt for you.")
+                                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                                    .foregroundStyle(Color.appTextSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .lineSpacing(2)
                             }
                         }
-                        .padding(.top, 24)
 
-                        Text("What would you\nlike to create?")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.appText)
-                            .multilineTextAlignment(.center)
-                            .lineSpacing(4)
-
-                        VStack(spacing: 6) {
-                            Text("Your AI prompt helper")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color.appAccent)
-                            Text("Pick a style, describe your idea, and we'll\ncraft the perfect prompt for you.")
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
-                                .foregroundStyle(Color.appTextSecondary)
-                                .multilineTextAlignment(.center)
-                                .lineSpacing(2)
+                        LazyVGrid(columns: columns, spacing: 9) {
+                            ForEach(promptTypes) { type in
+                                typeCard(type)
+                            }
                         }
-                    }
+                        .padding(.horizontal, 4)
 
-                    // Type grid
-                    LazyVGrid(columns: columns, spacing: 14) {
-                        ForEach(promptTypes) { type in
-                            typeCard(type)
-                        }
-                    }
-                    .padding(.horizontal, 4)
-
-                    // Selected type indicator
-                    if let sel = selectedType {
-                        HStack(spacing: 8) {
-                            Text(sel.emoji)
-                                .font(.system(size: 18))
-                            Text(sel.label)
-                                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color.appText)
-                            Spacer()
-                            Button {
-                                withAnimation(.easeOut(duration: 0.15)) { selectedType = nil }
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 18))
+                        if isGenerating {
+                            HStack(spacing: 10) {
+                                ProgressView().tint(Color.appAccent)
+                                Text("Generating prompt...")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
                                     .foregroundStyle(Color.appTextSecondary)
                             }
-                            .buttonStyle(.plain)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(Color.appCard)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.appAccent.opacity(0.3), lineWidth: 1)
-                        )
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                }
 
-                    // Chat messages (răspunsurile de la OpenAI)
-                    if !chatMessages.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            ForEach(Array(chatMessages.enumerated()), id: \.offset) { _, item in
-                                HStack(alignment: .top, spacing: 10) {
-                                    if item.role == "user" { Spacer(minLength: 40) }
-                                    Text(item.content)
-                                        .font(.system(size: 15, weight: .regular, design: .rounded))
-                                        .foregroundStyle(Color.appText)
-                                        .padding(12)
-                                        .background(item.role == "user" ? Color.appAccent.opacity(0.2) : Color.appCard)
-                                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                                    if item.role == "assistant" { Spacer(minLength: 40) }
-                                }
-                            }
-                            if isSending {
-                                HStack(alignment: .top, spacing: 10) {
-                                    ProgressView().tint(Color.appAccent)
-                                    Text("Thinking...")
-                                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                                        .foregroundStyle(Color.appTextSecondary)
-                                }
-                            }
-                            if let err = chatError {
-                                Text(err)
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.red)
-                            }
-                            if let last = chatMessages.last, last.role == "assistant", !last.content.isEmpty {
+                        if let err = generationError {
+                            Text(err)
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        if !generatedPrompt.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Generated Prompt")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color.appAccent)
+                                Text(generatedPrompt)
+                                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                                    .foregroundStyle(Color.appText)
+                                    .padding(12)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color.appCard)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
                                 Button {
-                                    onSelectPrompt(last.content)
+                                    onSelectPrompt(generatedPrompt)
                                     dismiss()
                                 } label: {
                                     HStack(spacing: 8) {
@@ -196,35 +152,23 @@ struct ExplorePromptsView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 16)
                     }
-
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
 
                 Spacer(minLength: 0)
                 inputBar
             }
         }
         .tint(Color.appAccent)
-        .navigationBarHidden(true)
-        .onAppear { hideTabBarBinding.wrappedValue = true }
-        .onDisappear { hideTabBarBinding.wrappedValue = false }
-        .onChange(of: selectedPhotoItem) { newItem in
-            Task {
-                if let data = try? await newItem?.loadTransferable(type: Data.self),
-                   let img = UIImage(data: data) {
-                    attachedImage = img
-                } else {
-                    attachedImage = nil
-                }
+        .onAppear {
+            if inputText.isEmpty && !currentPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                inputText = currentPrompt
             }
         }
     }
 
-    // MARK: - Type card
     private func typeCard(_ type: PromptType) -> some View {
         let isSelected = selectedType?.id == type.id
         return Button {
@@ -262,59 +206,27 @@ struct ExplorePromptsView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Input bar
     private var inputBar: some View {
         VStack(spacing: 0) {
             Divider().overlay(Color.appDivider)
 
-            // Image preview
-            if let img = attachedImage {
-                HStack(spacing: 10) {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    Text("Reference image")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.appTextSecondary)
-                    Spacer()
-                    Button {
-                        attachedImage = nil
-                        selectedPhotoItem = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(Color.appTextSecondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
-            }
-
             HStack(spacing: 8) {
-                // Photo picker
-                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                    Image(systemName: attachedImage != nil ? "photo.fill" : "photo")
-                        .font(.system(size: 20))
-                        .foregroundStyle(Color.appAccent)
-                        .frame(width: 36, height: 36)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-
-                // Text field
                 HStack(spacing: 8) {
                     if let sel = selectedType {
                         Text(sel.emoji)
                             .font(.system(size: 16))
                     }
-                    TextField("Describe your image...", text: $inputText, axis: .vertical)
-                        .font(.system(size: 15, weight: .regular, design: .rounded))
-                        .foregroundStyle(Color.appText)
-                        .lineLimit(1...3)
-                        .focused($inputFocused)
+                    TextField(
+                        "",
+                        text: $inputText,
+                        prompt: Text("Describe your image...")
+                            .foregroundColor(Color.appText.opacity(0.62)),
+                        axis: .vertical
+                    )
+                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                    .foregroundStyle(Color.appText)
+                    .lineLimit(1...3)
+                    .focused($inputFocused)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 11)
@@ -326,7 +238,6 @@ struct ExplorePromptsView: View {
                 )
                 .onSubmit { submitInput() }
 
-                // Send
                 Button { submitInput() } label: {
                     Circle()
                         .fill(canSubmit ? Color.appAccent : Color.appDivider)
@@ -338,7 +249,7 @@ struct ExplorePromptsView: View {
                         )
                 }
                 .buttonStyle(.plain)
-                .disabled(!canSubmit)
+                .disabled(!canSubmit || isGenerating)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -347,46 +258,33 @@ struct ExplorePromptsView: View {
     }
 
     private var canSubmit: Bool {
-        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || attachedImage != nil
+        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func submitInput() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let prefix = selectedType.map { "\($0.label) style: " } ?? ""
-        let userContent = text.isEmpty ? "Use the attached image as style reference." : (prefix + text)
-        guard !userContent.isEmpty || attachedImage != nil else { return }
+        guard !text.isEmpty else { return }
 
-        chatError = nil
-        chatMessages.append((role: "user", content: userContent))
-        inputText = ""
+        generationError = nil
+        generatedPrompt = ""
+        isGenerating = true
+
         let category = selectedType?.label
-        let imageBase64 = attachedImage.flatMap { img -> String? in
-            img.jpegData(compressionQuality: 0.7).map { "data:image/jpeg;base64," + $0.base64EncodedString() }
-        }
-        if attachedImage != nil {
-            attachedImage = nil
-            selectedPhotoItem = nil
-        }
-
-        let dictMessages = chatMessages.map { ["role": $0.role, "content": $0.content] }
-        isSending = true
-        api.promptAssistantChat(messages: dictMessages, category: category, imageBase64: imageBase64) { result in
-            isSending = false
+        openAIService.generatePrompt(prompt: text, category: category) { result in
+            isGenerating = false
             switch result {
             case .success(let response):
-                if let err = response.error, !err.isEmpty {
-                    chatError = err
+                if !response.error.isEmpty {
+                    generationError = response.error
                     return
                 }
-                let content = response.message?.content ?? ""
-                chatMessages.append((role: "assistant", content: content))
+                generatedPrompt = response.generated_prompt
+                if generatedPrompt.isEmpty {
+                    generationError = "No prompt was generated."
+                }
             case .failure(let err):
-                chatError = err.localizedDescription
+                generationError = err.localizedDescription
             }
         }
     }
-}
-
-#Preview {
-    ExplorePromptsView(currentPrompt: "A cat in space") { _ in }
 }

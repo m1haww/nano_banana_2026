@@ -1,8 +1,3 @@
-//
-//  HomeView.swift
-//  AI Image Generator
-//
-
 import SwiftUI
 import PhotosUI
 import UIKit
@@ -68,46 +63,156 @@ enum AspectRatioOption: String, CaseIterable {
     case fourFive = "4:5"
     case fiveFour = "5:4"
     case twentyOneNine = "21:9"
-
 }
 
 struct HomeView: View {
     @Binding var initialPromptFromDiscover: String?
-
-    @State private var cards: [CategoryCard] = []
-    @State private var isLoadingImageStyles = true
+    @State private var cards: [CategoryCard] = CategoryCard.homeCards
     @StateObject private var viewModel = CreateViewModel()
+    @StateObject private var subscriptionService = SubscriptionService.shared
     @State private var selectedAspectRatio: AspectRatioOption = .oneToOne
-    @State private var shareItems: [Any] = []
-    @State private var showShareSheet = false
     @State private var showSaveConfirmation = false
-    @State private var showAllImageStyles = false
+    @State private var showExplorePrompts = false
+    @State private var selectedImageStyleId: CategoryCard.ID?
     @State private var selectedPhotoItem: PhotosPickerItem?
     @FocusState private var promptFocused: Bool
-    @State private var showResultPage = false
+    @State private var showGenerationResult = false
+    @State private var showErrorAlert = false
+    @State private var errorAlertMessage = ""
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
-                    // Header: icon, app name, Pro
-                    HStack(spacing: 12) {
-                        appIcon
-                        Text("PigFig")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.appText)
-                        Spacer()
-                        Button { } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "crown.fill")
-                                    .font(.system(size: 12))
-                                Text("Pro")
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+            ZStack {
+                VStack(spacing: 0) {
+                homeHeader
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Enter Prompt
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text("Enter Prompt")
+                                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color.appText)
+                                Spacer()
+                                Button {
+                                    showExplorePrompts = true
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Text("Explore Prompts")
+                                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                                        Image(systemName: "arrow.right")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .foregroundStyle(Color.appAccent)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
+                            
+                            ZStack(alignment: .topLeading) {
+                                Text("Describe anything, let our AI robot create magic for you...")
+                                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                                    .foregroundStyle(Color.appTextSecondary)
+                                    .padding(12)
+                                    .allowsHitTesting(false)
+                                    .opacity(viewModel.prompt.isEmpty ? 1 : 0)
+                                AlignedPromptField(
+                                    text: $viewModel.prompt,
+                                    placeholder: "Describe anything...",
+                                    font: .systemFont(ofSize: 16, weight: .regular),
+                                    textColor: .white,
+                                    tintColor: .yellow,
+                                    minHeight: 80,
+                                    maxHeight: 200
+                                )
+                                .frame(minHeight: 80, maxHeight: 200)
+                                .padding(12)
+                            }
+                            .background(Color.appPromptBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.appDivider, lineWidth: 1)
+                            )
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+
+                        // Aspect Ratio — ScrollView pe toată lățimea; padding doar pe titlu și pe conținutul scroll-ului (stânga+dreapta simetric)
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Aspect Ratio")
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Color.appText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 20)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(AspectRatioOption.allCases, id: \.self) { option in
+                                        AspectRatioButton(
+                                            option: option,
+                                            isSelected: selectedAspectRatio == option
+                                        ) {
+                                            selectedAspectRatio = option
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 2)
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Image Style")
+                                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color.appText)
+                                Spacer()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(cards) { card in
+                                        ImageStyleCardView(
+                                            card: card,
+                                            isSelected: selectedImageStyleId == card.id
+                                        ) {
+                                            selectedImageStyleId = selectedImageStyleId == card.id ? nil : card.id
+                                        }
+                                    }
+                                }
+                                .padding(.top, 8)
+                                .padding(.horizontal, 20)
+                            }
+                        }
+
+                        Button {
+                            promptFocused = false
+                            
+                            guard subscriptionService.credits > 0 else {
+                                if subscriptionService.isSubscribed {
+                                    subscriptionService.showShop = true
+                                } else {
+                                    subscriptionService.showPaywall = true
+                                }
+                                return
+                            }
+                            
+                            viewModel.aspectRatio = selectedAspectRatio.rawValue
+                            let stylePrefix = selectedStyleCard.map { "\($0.category) style: " } ?? ""
+                            Task { await viewModel.generate(stylePrefix: stylePrefix) }
+                        } label: {
+                            HStack(spacing: 3) {
+                                Text("Generate 10")
+                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                Image(systemName: "film")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18)
                             .background(
                                 LinearGradient(
                                     colors: [Color.appAccent, Color.appAccentSecondary],
@@ -115,149 +220,145 @@ struct HomeView: View {
                                     endPoint: .trailing
                                 )
                             )
-                            .clipShape(Capsule())
+                            .clipShape(RoundedRectangle(cornerRadius: 18))
                         }
+                        .disabled(viewModel.isGenerating)
+                        .opacity(viewModel.isGenerating ? 0.55 : 1)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 20)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-
-                    // Enter Prompt
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("Enter Prompt")
-                                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color.appText)
-                            Spacer()
-                            NavigationLink {
-                                ExplorePromptsView(currentPrompt: viewModel.prompt) { selected in
-                                    viewModel.prompt = selected
-                                }
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Text("Explore Prompts")
-                                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                                    Image(systemName: "arrow.right")
-                                        .font(.system(size: 12, weight: .semibold))
-                                }
-                                .foregroundStyle(Color.appAccent)
-                            }
-                        }
-                        ZStack(alignment: .topLeading) {
-                            Text("Describe anything, let our AI robot create magic for you...")
-                                .font(.system(size: 16, weight: .regular, design: .rounded))
-                                .foregroundStyle(Color.appTextSecondary)
-                                .padding(12)
-                                .allowsHitTesting(false)
-                                .opacity(viewModel.prompt.isEmpty ? 1 : 0)
-                            AlignedPromptField(
-                                text: $viewModel.prompt,
-                                placeholder: "Describe anything...",
-                                font: .systemFont(ofSize: 16, weight: .regular),
-                                textColor: .white,
-                                tintColor: .yellow,
-                                minHeight: 80,
-                                maxHeight: 200
-                            )
-                            .frame(minHeight: 80, maxHeight: 200)
-                            .padding(12)
-                        }
-                        .background(Color.appPromptBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.appDivider, lineWidth: 1)
-                        )
+                }
+                .onTapGesture { promptFocused = false }
+                .onAppear {
+                    subscriptionService.fetchStatus()
+                    if let prompt = initialPromptFromDiscover {
+                        viewModel.prompt = prompt
+                        initialPromptFromDiscover = nil
                     }
-                    .padding(.horizontal, 20)
+                }
+                }
+                .background(Color.appBackground)
 
-                    // Aspect Ratio
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Aspect Ratio")
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.appText)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach(AspectRatioOption.allCases, id: \.self) { option in
-                                    AspectRatioButton(
-                                        option: option,
-                                        isSelected: selectedAspectRatio == option
-                                    ) {
-                                        selectedAspectRatio = option
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 2)
-                        }
+                if viewModel.isGenerating {
+                    GenerationLoadingOverlay()
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                }
+            }
+        }
+        /// System `.alert` action labels use the environment tint; switch to black while an alert is up.
+        .tint(alertActionsTint)
+        .onChange(of: viewModel.errorMessage) { newValue in
+            if let msg = newValue, !msg.isEmpty {
+                errorAlertMessage = msg
+                showErrorAlert = true
+            }
+        }
+        .onChange(of: viewModel.didJustGenerate) { did in
+            if did {
+                showGenerationResult = true
+            }
+        }
+        .onChange(of: viewModel.isGenerating) { isGen in
+            if isGen {
+                showGenerationResult = false
+            }
+        }
+        .fullScreenCover(isPresented: $showExplorePrompts) {
+            ExplorePromptsView(currentPrompt: viewModel.prompt) { selected in
+                viewModel.prompt = selected
+            }
+        }
+        .alert("Saved", isPresented: $showSaveConfirmation) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Image saved to Photos.")
+        }
+        .alert("Notice", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) {
+                viewModel.errorMessage = nil
+            }
+        } message: {
+            Text(errorAlertMessage)
+        }
+        .fullScreenCover(isPresented: $showGenerationResult, onDismiss: {
+            viewModel.didJustGenerate = false
+        }) {
+            if let img = viewModel.generatedImage {
+                HomeGenerationResultView(
+                    image: img,
+                    prompt: $viewModel.prompt,
+                    onShare: {
+                        ShareService.shared.present(items: [img, viewModel.prompt])
+                    },
+                    onSave: {
+                        viewModel.saveToPhotos(img)
+                        showSaveConfirmation = true
                     }
-                    .padding(.horizontal, 20)
+                )
+            }
+        }
+    }
 
-                    // Image Style – horizontal square cards; tap pe săgeată → pagină cu toate cardurile
-                    VStack(alignment: .leading, spacing: 12) {
-                        Button {
-                            showAllImageStyles = true
-                        } label: {
-                            HStack {
-                                Text("Image Style")
-                                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(Color.appText)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(Color.appAccent)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                if isLoadingImageStyles {
-                                    ForEach(0..<5, id: \.self) { _ in
-                                        ImageStyleSkeletonCard()
-                                    }
-                                } else {
-                                    ForEach(cards) { card in
-                                        ImageStyleCardView(card: card)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 2)
-                        }
+    private var selectedStyleCard: CategoryCard? {
+        cards.first(where: { $0.id == selectedImageStyleId })
+    }
+
+    private var alertActionsTint: Color {
+        if showErrorAlert || showSaveConfirmation { return .black }
+        return Color.appAccent
+    }
+
+    private var homeHeader: some View {
+        HStack(spacing: 12) {
+            appIcon
+            Text("AI Image")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.appText)
+            Spacer()
+
+            HStack(spacing: 8) {
+                Button {
+                    subscriptionService.showShop = true
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "film")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text("\(subscriptionService.credits)")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .lineLimit(1)
                     }
-                    .padding(.horizontal, 20)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .foregroundStyle(Color.appAccent)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.appCard)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.appAccent.opacity(0.45), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
 
-                    // Result area (when generating or has image)
-                    if viewModel.isGenerating || viewModel.generatedImage != nil {
-                        resultSection
-                            .padding(.horizontal, 20)
-                    }
-
-                    if let err = viewModel.errorMessage {
-                        Text(err)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(.red)
-                            .padding(.horizontal, 20)
-                    }
-
-                    // Get Started button
+                if !subscriptionService.isSubscribed {
                     Button {
-                        promptFocused = false
-                        viewModel.aspectRatio = selectedAspectRatio.rawValue
-                        Task { await viewModel.generate() }
+                        subscriptionService.showPaywall = true
                     } label: {
-                        HStack(spacing: 10) {
-                            if viewModel.isGenerating {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Text("Get Started")
-                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 18, weight: .semibold))
-                            }
+                        HStack(spacing: 6) {
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .frame(width: 14, alignment: .center)
+                            Text("Pro")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
                         }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
                         .background(
                             LinearGradient(
                                 colors: [Color.appAccent, Color.appAccentSecondary],
@@ -265,68 +366,17 @@ struct HomeView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .clipShape(Capsule())
                     }
-                    .disabled(viewModel.isGenerating)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 100)
+                    .buttonStyle(.plain)
                 }
             }
-            .background(Color.appBackground)
-            .onTapGesture { promptFocused = false }
-            .onAppear {
-                if let prompt = initialPromptFromDiscover {
-                    viewModel.prompt = prompt
-                    initialPromptFromDiscover = nil
-                }
-                print("[HomeView] onAppear: pornim loading, apelăm MockDataLoader.loadCards")
-                isLoadingImageStyles = true
-                MockDataLoader.loadCards { loaded in
-                    print("[HomeView] loadCards completion: \(loaded.count) carduri → cards = loaded")
-                    cards = loaded
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        isLoadingImageStyles = false
-                    }
-                }
-            }
+            .layoutPriority(1)
         }
-        }
-        .sheet(isPresented: $showShareSheet) {
-            if !shareItems.isEmpty {
-                ShareSheet(items: shareItems)
-            }
-        }
-        .sheet(isPresented: $showAllImageStyles) {
-            AllImageStylesView(cards: cards)
-        }
-        .alert("Saved", isPresented: $showSaveConfirmation) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Image saved to Photos.")
-        }
-        .fullScreenCover(isPresented: $showResultPage) {
-            if let img = viewModel.generatedImage {
-                ResultView(
-                    image: img,
-                    prompt: $viewModel.prompt,
-                    initialAspectRatio: viewModel.aspectRatio,
-                    onFinalize: { },
-                    onReGenerate: {
-                        Task { await viewModel.generate() }
-                    },
-                    onShare: {
-                        shareItems = [img, viewModel.prompt]
-                        showShareSheet = true
-                        showResultPage = false
-                    },
-                    onDownload: {
-                        viewModel.saveToPhotos(img)
-                        showSaveConfirmation = true
-                    }
-                )
-            }
-        }
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 16)
+        .background(Color.appBackground)
     }
 
     private var appIcon: some View {
@@ -352,77 +402,113 @@ struct HomeView: View {
         }
     }
 
-    @ViewBuilder
-    private var resultSection: some View {
+}
+
+/// Full-screen result after home generation (DiscoverDetailView-style: image, prompt card, Share / Save).
+struct HomeGenerationResultView: View {
+    @Environment(\.dismiss) private var dismiss
+    let image: UIImage
+    @Binding var prompt: String
+    let onShare: () -> Void
+    let onSave: () -> Void
+    var onContinueToApp: (() -> Void)? = nil
+
+    var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.appPromptBackground)
-                .frame(minHeight: 220)
-                .overlay {
-                    if viewModel.isGenerating {
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .scaleEffect(1.2)
-                                .tint(Color.appAccent)
-                            Text("Generating…")
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundStyle(Color.appTextSecondary)
-                        }
-                    } else if let img = viewModel.generatedImage {
-                        Button {
-                            showResultPage = true
-                        } label: {
-                            Image(uiImage: img)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .clipShape(RoundedRectangle(cornerRadius: 20))
-                        }
-                        .buttonStyle(.plain)
+            Color.appBackground.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.appText)
+                            .frame(width: 44, height: 44)
                     }
-                }
-            if viewModel.generatedImage != nil && !viewModel.isGenerating {
-                VStack {
+                    .buttonStyle(.plain)
                     Spacer()
-                    HStack(spacing: 12) {
-                        Button {
-                            showResultPage = true
-                        } label: {
-                            Text("Finalize")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Your creation")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
                                 .foregroundStyle(Color.appAccent)
+                            Text(prompt)
+                                .font(.system(size: 16, weight: .regular, design: .rounded))
+                                .foregroundStyle(Color.appText)
                         }
-                        Button {
-                            if let img = viewModel.generatedImage {
-                                viewModel.saveToPhotos(img)
-                                showSaveConfirmation = true
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(Color.appCard)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                        HStack(spacing: 12) {
+                            Button(action: onShare) {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color.appAccent)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.appAccent.opacity(0.18))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
-                        } label: {
-                            Label("Save", systemImage: "square.and.arrow.down")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color.appAccent)
+                            .buttonStyle(.plain)
+
+                            Button(action: onSave) {
+                                Label("Save", systemImage: "square.and.arrow.down")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color.appBackground)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.appAccent)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
+                            .buttonStyle(.plain)
                         }
-                        Button {
-                            if let img = viewModel.generatedImage {
-                                shareItems = [img, viewModel.prompt]
-                                showShareSheet = true
+
+                        if onContinueToApp != nil {
+                            Button {
+                                onContinueToApp?()
+                                dismiss()
+                            } label: {
+                                Text("Continue to app")
+                                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color.appBackground)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(
+                                        LinearGradient(
+                                            colors: [Color.appAccent, Color.appAccentSecondary],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                             }
-                        } label: {
-                            Label("Share", systemImage: "square.and.arrow.up")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color.appAccent)
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 40)
                 }
             }
         }
+        .toolbar(.hidden, for: .tabBar)
     }
 }
 
-// MARK: - Aspect Ratio button: desen proporțional + text, toate rapoartele Nano Banana
 private struct AspectRatioButton: View {
     let option: AspectRatioOption
     let isSelected: Bool
@@ -459,12 +545,6 @@ private struct AspectRatioButton: View {
                         isSelected ? Color.white.opacity(0.3) : Color.appAccent.opacity(0.5),
                         lineWidth: isSelected ? 1 : 1.2
                     )
-            )
-            .shadow(
-                color: isSelected ? Color.appAccent.opacity(0.35) : .clear,
-                radius: 8,
-                x: 0,
-                y: 4
             )
         }
         .buttonStyle(.plain)
@@ -541,82 +621,80 @@ private struct ImageStyleSkeletonCard: View {
     }
 }
 
-// MARK: - Pagină cu toate cardurile Image Style (la tap pe săgeată)
-private struct AllImageStylesView: View {
-    let cards: [CategoryCard]
-    @Environment(\.dismiss) private var dismiss
-
-    private let columns = [
-        GridItem(.adaptive(minimum: 140), spacing: 16)
-    ]
-
-    var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(cards) { card in
-                        ImageStyleCardView(card: card)
-                    }
-                }
-                .padding(20)
-                .padding(.bottom, 40)
-            }
-            .background(Color.appBackground)
-            .navigationTitle("Image Style")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(Color.appTextSecondary)
-                    }
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Square Image Style card: image on top, title (category) below
 private struct ImageStyleCardView: View {
     let card: CategoryCard
+    let isSelected: Bool
+    let onTap: () -> Void
     private let size: CGFloat = 140
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Group {
-                if let uiImage = UIImage(named: card.image) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    LinearGradient(
-                        colors: [Color.appAccent.opacity(0.5), Color.appAccentSecondary.opacity(0.5)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .overlay(
-                        Image(systemName: "photo.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(.white.opacity(0.7))
-                    )
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 10) {
+                Group {
+                    if let assetImage = UIImage(named: card.imageURL) {
+                        Image(uiImage: assetImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else if let url = URL(string: card.imageURL), url.scheme?.hasPrefix("http") == true {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            case .failure:
+                                fallbackImage
+                            case .empty:
+                                loadingImage
+                            default:
+                                loadingImage
+                            }
+                        }
+                    } else {
+                        fallbackImage
+                    }
                 }
+                .frame(width: size, height: size)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(isSelected ? Color.appAccent : Color.clear, lineWidth: 2)
+                )
+
+                Text(card.category)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(isSelected ? Color.appAccent : Color.appText)
+                    .lineLimit(1)
             }
-            .frame(width: size, height: size)
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-
-            Text(card.category)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.appText)
-                .lineLimit(1)
+            .frame(width: size)
+            .scaleEffect(isSelected ? 1.03 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isSelected)
         }
-        .frame(width: size)
+        .buttonStyle(.plain)
     }
-}
 
-#Preview {
-    HomeView(initialPromptFromDiscover: .constant(nil))
+    @ViewBuilder
+    private var fallbackImage: some View {
+        LinearGradient(
+            colors: [Color.appAccent.opacity(0.5), Color.appAccentSecondary.opacity(0.5)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .overlay(
+            Image(systemName: "photo.fill")
+                .font(.system(size: 36))
+                .foregroundStyle(.white.opacity(0.7))
+        )
+    }
+
+    @ViewBuilder
+    private var loadingImage: some View {
+        ZStack {
+            Color.appPromptBackground
+            ProgressView()
+                .tint(Color.appAccent)
+        }
+    }
 }

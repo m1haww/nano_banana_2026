@@ -1,8 +1,3 @@
-//
-//  ResultView.swift
-//  AI Image Generator
-//
-
 import SwiftUI
 
 /// Pagină Result: imagine generată, Style / Atmosphere / Aspect Ratio, Edit Prompt, Re-generate, Share, Download.
@@ -200,16 +195,4 @@ struct ResultView: View {
         .padding(.vertical, 16)
         .background(Color.appBackground)
     }
-}
-
-#Preview {
-    ResultView(
-        image: UIImage(),
-        prompt: .constant("A cat in space"),
-        initialAspectRatio: "4:3",
-        onFinalize: {},
-        onReGenerate: {},
-        onShare: {},
-        onDownload: {}
-    )
 }

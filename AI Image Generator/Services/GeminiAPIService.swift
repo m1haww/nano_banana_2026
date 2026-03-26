@@ -1,8 +1,3 @@
-//
-//  GeminiAPIService.swift
-//  AI Image Generator
-//
-
 import Foundation
 import UIKit
 import Combine
@@ -49,22 +44,8 @@ struct GeneratedImage: Codable {
     }
 }
 
-struct APIKeyResponse: Codable {
-    let apiKey: String?
-    let message: String?
-    private enum CodingKeys: String, CodingKey {
-        case apiKey = "api_key"
-        case message
-    }
-}
-
 struct ErrorResponse: Codable {
     let error: String
-}
-
-/// Răspuns de la backend GET /v1/app-config (cheia Poyo din Railway POYO_KEY).
-struct AppConfigResponse: Decodable {
-    let poyo_api_key: String?
 }
 
 // MARK: - Poyo API (nano-banana-2-new)
@@ -88,9 +69,9 @@ struct PoyoSubmitResponse: Decodable {
     let data: PoyoSubmitData
 }
 
+/// Submit response `data` (e.g. `{"created_time":"...","task_id":"..."}` — no `status` until poll).
 struct PoyoSubmitData: Decodable {
     let task_id: String
-    let status: String
     let created_time: String
 }
 
@@ -126,9 +107,7 @@ struct PoyoErrorDetail: Decodable {
 // MARK: - Prompt Assistant (Explore Prompts chat + save)
 
 struct PromptAssistantChatRequest: Encodable {
-    let messages: [[String: String]]
-    let category: String?
-    let image_base64: String?
+    let prompt: String
 }
 
 struct PromptAssistantChatResponse: Decodable {
@@ -197,52 +176,21 @@ enum APIError: Error, LocalizedError {
 final class GeminiAPIService: ObservableObject {
     static let shared = GeminiAPIService()
 
-    /// Poyo API – Nano Banana 2 (https://docs.poyo.ai/api-manual/image-series/nano-banana-2-new)
-    private let baseURL = "https://api.poyo.ai"
-    /// Backend (Railway) – categorii / Image Style: GET /v1/categories
-    /// Backend public Railway (domeniul generat în Settings → Networking)
+    /// Backend (Railway). Image generation is proxied here; Poyo API key stays on the server.
     private let backendBaseURL = "https://nano-banana-api-production-fa0e.up.railway.app"
+    /// Image job submit (proxies to Poyo on the server). Body matches Poyo: model, callback_url, input { prompt, size, resolution, … }.
+    private let generateSubmitPath = "/api/generate"
+    private let generateStatusPath = "/api/generate/status"
+
     @Published var userId: String?
     private let userIdKey = "nanoBananaUserId"
-    private let apiKeyKey = "poyoAPIKey"
 
     private init() {
         loadOrCreateUserId()
-        if getAPIKey() == nil {
-            fetchPoyoKeyFromBackend()
-        }
     }
 
-    /// Încarcă cheia Poyo din backend (Railway: variabila POYO_KEY).
-    private func fetchPoyoKeyFromBackend() {
-        guard let url = URL(string: "\(backendBaseURL)/v1/app-config") else { return }
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        session().dataTask(with: request) { [weak self] data, response, error in
-            guard let self = self, error == nil,
-                  let http = response as? HTTPURLResponse, http.statusCode == 200,
-                  let data = data,
-                  let decoded = try? JSONDecoder().decode(AppConfigResponse.self, from: data),
-                  let key = decoded.poyo_api_key, !key.isEmpty else { return }
-            DispatchQueue.main.async {
-                self.saveAPIKey(key)
-            }
-        }.resume()
-    }
-
-    func getAPIKey() -> String? {
-        UserDefaults.standard.string(forKey: apiKeyKey)
-    }
-
-    func saveAPIKey(_ key: String) {
-        UserDefaults.standard.set(key, forKey: apiKeyKey)
-    }
-
-    private func addBearerHeader(to request: inout URLRequest) {
-        if let apiKey = getAPIKey() {
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        }
-    }
+    /// No client Poyo key; UI can treat this as “backend handles generation”.
+    var isBackendImageProxyEnabled: Bool { true }
 
     private func loadOrCreateUserId() {
         if let stored = UserDefaults.standard.string(forKey: userIdKey) {
@@ -254,74 +202,10 @@ final class GeminiAPIService: ObservableObject {
         }
     }
 
-    private func session() -> URLSession {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 60
-        config.timeoutIntervalForResource = 300
-        config.waitsForConnectivity = true
-        return URLSession(configuration: config)
-    }
-
-    /// Register for API key (same backend as nano-banana). Call once if key is missing.
-    func registerAPIKey(completion: @escaping (Result<String, APIError>) -> Void) {
-        guard let uid = userId, let url = URL(string: "\(baseURL)/v1/api-key/register") else {
-            completion(.failure(.invalidURL))
-            return
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body = ["user_id": uid]
-        guard let data = try? JSONSerialization.data(withJSONObject: body) else {
-            completion(.failure(.encodingError))
-            return
-        }
-        request.httpBody = data
-
-        session().dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    completion(.failure(.networkError(error.localizedDescription)))
-                    return
-                }
-                guard let http = response as? HTTPURLResponse else {
-                    completion(.failure(.invalidResponse))
-                    return
-                }
-                guard let data = data else {
-                    completion(.failure(.noData))
-                    return
-                }
-                switch http.statusCode {
-                case 200, 201:
-                    do {
-                        let decoded = try JSONDecoder().decode(APIKeyResponse.self, from: data)
-                        if let key = decoded.apiKey {
-                            self?.saveAPIKey(key)
-                            completion(.success(key))
-                        } else {
-                            completion(.failure(.serverError("No API key in response")))
-                        }
-                    } catch {
-                        completion(.failure(.decodingError))
-                    }
-                case 400, 500:
-                    if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
-                        completion(.failure(.serverError(err.error)))
-                    } else {
-                        completion(.failure(.serverError("Request failed")))
-                    }
-                default:
-                    completion(.failure(.unexpectedStatusCode(http.statusCode)))
-                }
-            }
-        }.resume()
-    }
-
     /// Poyo / Nano Banana 2: submit task → poll status → download image.
     /// aspectRatio: one of 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9 (per Poyo API docs).
     func createImage(prompt: String, image: UIImage? = nil, aspectRatio: String = "1:1", model: String = "nano-banana-2-new", completion: @escaping (Result<ImageCreationResponse, APIError>) -> Void) {
-        guard let url = URL(string: "\(baseURL)/api/generate/submit") else {
+        guard let url = URL(string: "\(backendBaseURL)\(generateSubmitPath)") else {
             completion(.failure(.invalidURL))
             return
         }
@@ -329,7 +213,6 @@ final class GeminiAPIService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        addBearerHeader(to: &request)
 
         let body = PoyoSubmitRequest(
             model: model,
@@ -347,174 +230,134 @@ final class GeminiAPIService: ObservableObject {
             return
         }
         request.httpBody = bodyData
+        
+        print("Request body sent: \(String(decoding: bodyData, as: UTF8.self))")
 
-        session().dataTask(with: request) { [weak self] data, response, error in
-            guard let self = self else { return }
-            if let error = error {
-                DispatchQueue.main.async { completion(.failure(.networkError(error.localizedDescription))) }
+        Task { [weak self] in
+            guard let self else {
+                await MainActor.run { completion(.failure(.invalidResponse)) }
                 return
             }
-            guard let http = response as? HTTPURLResponse, let data = data else {
-                DispatchQueue.main.async { completion(.failure(.invalidResponse)) }
-                return
+            let result = await self.performCreateImageFlow(submitRequest: request, prompt: prompt, model: model)
+            await MainActor.run {
+                completion(result)
             }
-            guard http.statusCode == 200 else {
-                let msg = (try? JSONDecoder().decode(PoyoErrorResponse.self, from: data)).flatMap { $0.error?.message } ?? "Request failed"
-                DispatchQueue.main.async { completion(.failure(.serverError(msg))) }
-                return
-            }
-            guard let submitResp = try? JSONDecoder().decode(PoyoSubmitResponse.self, from: data) else {
-                DispatchQueue.main.async { completion(.failure(.decodingError)) }
-                return
-            }
-            let taskId = submitResp.data.task_id
-            self.pollTaskStatus(taskId: taskId, pollInterval: 2.5, timeout: 90) { result in
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success(let imageURLString):
-                        self.downloadImage(from: imageURLString) { imgResult in
-                            DispatchQueue.main.async {
-                                switch imgResult {
-                                case .success(let uiImage):
-                                    let jpegData = uiImage.jpegData(compressionQuality: 0.9)
-                                    let base64 = jpegData?.base64EncodedString()
-                                    let gen = GeneratedImage(data: base64, mimeType: "image/jpeg")
-                                    let response = ImageCreationResponse(
-                                        model: model,
-                                        prompt: prompt,
-                                        hasInputImage: false,
-                                        result: ImageCreationResult(text: nil, images: [gen])
-                                    )
-                                    completion(.success(response))
-                                case .failure(let err):
-                                    completion(.failure(err))
-                                }
-                            }
-                        }
-                    case .failure(let err):
-                        completion(.failure(err))
-                    }
-                }
-            }
-        }.resume()
+        }
     }
 
-    private func pollTaskStatus(taskId: String, pollInterval: TimeInterval, timeout: TimeInterval, completion: @escaping (Result<String, APIError>) -> Void) {
-        guard let url = URL(string: "\(baseURL)/api/generate/status/\(taskId)") else {
-            completion(.failure(.invalidURL))
-            return
+    /// Submit → poll status → download image using `URLSession.data(for:)`.
+    private func performCreateImageFlow(submitRequest: URLRequest, prompt: String, model: String) async -> Result<ImageCreationResponse, APIError> {
+        let session = NetworkService.shared.safeSession()
+        do {
+            let (data, response) = try await session.data(for: submitRequest)
+            guard let http = response as? HTTPURLResponse else {
+                return .failure(.invalidResponse)
+            }
+            print("API response: \(String(data: data, encoding: .utf8) ?? "<too long>")")
+            
+            guard http.statusCode == 200 else {
+                let msg: String
+                if let flaskErr = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                    msg = flaskErr.error
+                } else if let poyoErr = try? JSONDecoder().decode(PoyoErrorResponse.self, from: data), let m = poyoErr.error?.message {
+                    msg = m
+                } else {
+                    msg = String(data: data, encoding: .utf8).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : $0 } ?? "Request failed"
+                }
+                return .failure(.serverError(msg))
+            }
+            guard let submitResp = try? JSONDecoder().decode(PoyoSubmitResponse.self, from: data) else {
+                return .failure(.decodingError)
+            }
+            let taskId = submitResp.data.task_id
+            switch await pollTaskStatus(taskId: taskId, pollInterval: 2.5, timeout: 90) {
+            case .success(let imageURLString):
+                switch await downloadImage(from: imageURLString) {
+                case .success(let uiImage):
+                    let jpegData = uiImage.jpegData(compressionQuality: 0.9)
+                    let base64 = jpegData?.base64EncodedString()
+                    let gen = GeneratedImage(data: base64, mimeType: "image/jpeg")
+                    let wrapped = ImageCreationResponse(
+                        model: model,
+                        prompt: prompt,
+                        hasInputImage: false,
+                        result: ImageCreationResult(text: nil, images: [gen])
+                    )
+                    return .success(wrapped)
+                case .failure(let err):
+                    return .failure(err)
+                }
+            case .failure(let err):
+                return .failure(err)
+            }
+        } catch {
+            return .failure(.networkError(error.localizedDescription))
+        }
+    }
+
+    private func pollTaskStatus(taskId: String, pollInterval: TimeInterval, timeout: TimeInterval) async -> Result<String, APIError> {
+        guard let url = URL(string: "\(backendBaseURL)\(generateStatusPath)/\(taskId)") else {
+            return .failure(.invalidURL)
         }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        addBearerHeader(to: &request)
-
+        let session = NetworkService.shared.safeSession()
         let start = Date()
-        func poll() {
-            if Date().timeIntervalSince(start) > timeout {
-                completion(.failure(.serverError("Generation timed out")))
-                return
-            }
-            session().dataTask(with: request) { [weak self] data, response, error in
-                guard let self = self else { return }
-                if let error = error {
-                    completion(.failure(.networkError(error.localizedDescription)))
-                    return
-                }
-                guard let http = response as? HTTPURLResponse, let data = data, http.statusCode == 200,
+        let sleepNs = UInt64(max(pollInterval, 0.1) * 1_000_000_000)
+
+        while Date().timeIntervalSince(start) <= timeout {
+            do {
+                let (data, response) = try await session.data(for: request)
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200,
                       let statusResp = try? JSONDecoder().decode(PoyoStatusResponse.self, from: data) else {
-                    completion(.failure(.invalidResponse))
-                    return
+                    return .failure(.invalidResponse)
                 }
                 let status = statusResp.data.status
                 switch status {
                 case "finished":
                     if let fileURL = statusResp.data.files.first(where: { $0.file_type == "image" })?.file_url {
-                        completion(.success(fileURL))
+                        return .success(fileURL)
                     } else {
-                        completion(.failure(.serverError("No image in response")))
+                        return .failure(.serverError("No image in response"))
                     }
                 case "failed":
                     let msg = statusResp.data.error_message ?? "Generation failed"
-                    completion(.failure(.serverError(msg)))
+                    return .failure(.serverError(msg))
                 default:
-                    DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + pollInterval) { poll() }
+                    try await Task.sleep(nanoseconds: sleepNs)
                 }
-            }.resume()
+            } catch {
+                return .failure(.networkError(error.localizedDescription))
+            }
         }
-        poll()
+        return .failure(.serverError("Generation timed out"))
     }
 
-    private func downloadImage(from urlString: String, completion: @escaping (Result<UIImage, APIError>) -> Void) {
+    private func downloadImage(from urlString: String) async -> Result<UIImage, APIError> {
         guard let url = URL(string: urlString) else {
-            completion(.failure(.invalidURL))
-            return
+            return .failure(.invalidURL)
         }
-        session().dataTask(with: url) { data, response, error in
-            if let error = error {
-                completion(.failure(.networkError(error.localizedDescription)))
-                return
+        let session = NetworkService.shared.safeSession()
+        do {
+            let (data, _) = try await session.data(for: URLRequest(url: url))
+            guard let img = UIImage(data: data) else {
+                return .failure(.noData)
             }
-            guard let data = data, let img = UIImage(data: data) else {
-                completion(.failure(.noData))
-                return
-            }
-            completion(.success(img))
-        }.resume()
+            return .success(img)
+        } catch {
+            return .failure(.networkError(error.localizedDescription))
+        }
     }
 
-    /// Image Style – toate datele din backend (GET /v1/categories → data/image_styles.json).
-    func fetchImageStyles(completion: @escaping (Result<[CategoryCard], APIError>) -> Void) {
-        let urlString = "\(backendBaseURL)/v1/categories"
-        print("[fetchImageStyles] URL: \(urlString)")
-        guard let url = URL(string: urlString) else {
-            print("[fetchImageStyles] invalidURL")
-            completion(.failure(.invalidURL))
-            return
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        session().dataTask(with: request) { data, response, error in
-            let result: Result<[CategoryCard], APIError>
-            if let error = error {
-                print("[fetchImageStyles] network error: \(error.localizedDescription)")
-                result = .failure(.networkError(error.localizedDescription))
-            } else if let http = response as? HTTPURLResponse {
-                print("[fetchImageStyles] statusCode: \(http.statusCode), data length: \(data?.count ?? 0)")
-                if http.statusCode != 200 {
-                    result = .failure(.unexpectedStatusCode(http.statusCode))
-                } else if let data = data {
-                    do {
-                        let container = try JSONDecoder().decode(ImageStyleResponse.self, from: data)
-                        print("[fetchImageStyles] decode OK: \(container.cards.count) cards")
-                        result = .success(container.cards)
-                    } catch {
-                        print("[fetchImageStyles] decode failed: \(error). Preview: \(String(data: data, encoding: .utf8)?.prefix(200) ?? "nil")")
-                        result = .failure(.decodingError)
-                    }
-                } else {
-                    print("[fetchImageStyles] no data")
-                    result = .failure(.noData)
-                }
-            } else {
-                print("[fetchImageStyles] no response, no data")
-                result = .failure(.noData)
-            }
-            DispatchQueue.main.async {
-                completion(result)
-            }
-        }.resume()
-    }
-
-    /// Discover feed – GET /v1/discover (imagini + prompt + subtitle).
     func fetchDiscover(completion: @escaping (Result<[DiscoverItem], APIError>) -> Void) {
-        let urlString = "\(backendBaseURL)/v1/discover"
+        let urlString = "\(backendBaseURL)/api/discover"
         guard let url = URL(string: urlString) else {
             completion(.failure(.invalidURL))
             return
         }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        session().dataTask(with: request) { data, response, error in
+        NetworkService.shared.safeSession().dataTask(with: request) { data, response, error in
             let result: Result<[DiscoverItem], APIError>
             if let error = error {
                 result = .failure(.networkError(error.localizedDescription))
@@ -536,32 +379,22 @@ final class GeminiAPIService: ObservableObject {
         }.resume()
     }
 
-    // MARK: - Prompt Assistant (Explore Prompts: chat + save)
-
-    /// Chat pentru crearea promptului. messages: [ ["role": "user"|"assistant", "content": "..." ] ]
-    func promptAssistantChat(messages: [[String: String]], category: String?, imageBase64: String?, completion: @escaping (Result<PromptAssistantChatResponse, APIError>) -> Void) {
-        guard let url = URL(string: "\(backendBaseURL)/v1/prompt-assistant/chat") else {
+    func promptAssistantChat(prompt: String, completion: @escaping (Result<PromptAssistantChatResponse, APIError>) -> Void) {
+        guard let url = URL(string: "\(backendBaseURL)/api/prompt-assistant/chat") else {
             completion(.failure(.invalidURL))
             return
         }
-        // DEBUG: ce trimitem
-        print("[PromptAssistant] TRIMIT: messages=\(messages.count), category=\(category ?? "nil"), image=\(imageBase64 != nil ? "da" : "nu")")
-        for (i, m) in messages.enumerated() {
-            let role = m["role"] ?? "?"
-            let content = (m["content"] ?? "").prefix(60)
-            print("[PromptAssistant]   [\(i)] \(role): \(content)...")
-        }
+        print("[PromptAssistant] TRIMIT: prompt=\(prompt.prefix(80))...")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        addBearerHeader(to: &request)
-        let body = PromptAssistantChatRequest(messages: messages, category: category, image_base64: imageBase64)
+        let body = PromptAssistantChatRequest(prompt: prompt)
         guard let bodyData = try? JSONEncoder().encode(body) else {
             completion(.failure(.encodingError))
             return
         }
         request.httpBody = bodyData
-        session().dataTask(with: request) { data, response, error in
+        NetworkService.shared.safeSession().dataTask(with: request) { data, response, error in
             let result: Result<PromptAssistantChatResponse, APIError>
             if let error = error {
                 print("[PromptAssistant] PRIMIT: network error=\(error.localizedDescription)")
@@ -608,21 +441,20 @@ final class GeminiAPIService: ObservableObject {
 
     /// Salvează promptul pentru userul curent.
     func promptAssistantSave(promptText: String, title: String?, completion: @escaping (Result<SavedPromptItem, APIError>) -> Void) {
-        guard let url = URL(string: "\(backendBaseURL)/v1/prompt-assistant/save") else {
+        guard let url = URL(string: "\(backendBaseURL)/api/prompt-assistant/save") else {
             completion(.failure(.invalidURL))
             return
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        addBearerHeader(to: &request)
         let body = PromptAssistantSaveRequest(prompt_text: promptText, title: title)
         guard let bodyData = try? JSONEncoder().encode(body) else {
             completion(.failure(.encodingError))
             return
         }
         request.httpBody = bodyData
-        session().dataTask(with: request) { data, response, error in
+        NetworkService.shared.safeSession().dataTask(with: request) { data, response, error in
             let result: Result<SavedPromptItem, APIError>
             if let error = error {
                 result = .failure(.networkError(error.localizedDescription))
@@ -650,14 +482,13 @@ final class GeminiAPIService: ObservableObject {
 
     /// Listează prompturile salvate.
     func promptAssistantSavedList(completion: @escaping (Result<PromptAssistantSavedResponse, APIError>) -> Void) {
-        guard let url = URL(string: "\(backendBaseURL)/v1/prompt-assistant/saved") else {
+        guard let url = URL(string: "\(backendBaseURL)/api/prompt-assistant/saved") else {
             completion(.failure(.invalidURL))
             return
         }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        addBearerHeader(to: &request)
-        session().dataTask(with: request) { data, response, error in
+        NetworkService.shared.safeSession().dataTask(with: request) { data, response, error in
             let result: Result<PromptAssistantSavedResponse, APIError>
             if let error = error {
                 result = .failure(.networkError(error.localizedDescription))

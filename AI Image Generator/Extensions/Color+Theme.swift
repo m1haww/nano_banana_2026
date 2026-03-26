@@ -1,12 +1,6 @@
-//
-//  Color+Theme.swift
-//  AI Image Generator
-//
-
 import SwiftUI
 
 extension Color {
-    /// Nano Banana brand – galben/auriu accent, fundal închis cald
     static let appBackground = Color(hex: "12100D")
     static let appCard = Color(hex: "1C1914")
     static let appAccent = Color(hex: "F5C518")

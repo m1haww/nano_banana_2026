@@ -1,17 +1,13 @@
-//
-//  AI_Image_GeneratorApp.swift
-//  AI Image Generator
-//
-//  Created by Mihail Ozun on 13.03.2026.
-//
-
 import SwiftUI
+import UIKit
 
 @main
 struct AI_Image_GeneratorApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
     }
 }

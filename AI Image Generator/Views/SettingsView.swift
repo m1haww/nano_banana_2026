@@ -24,10 +24,10 @@ struct SettingsView: View {
                 VStack(spacing: 0) {
                     SettingsRow(
                         icon: "key.fill",
-                        title: "API Status",
-                        value: api.getAPIKey() != nil ? "Connected" : "Not set"
+                        title: "Image generation",
+                        value: api.isBackendImageProxyEnabled ? "Server proxy" : "Not configured"
                     )
-                    .foregroundStyle(api.getAPIKey() != nil ? Color.appAccent : Color.appTextSecondary)
+                    .foregroundStyle(api.isBackendImageProxyEnabled ? Color.appAccent : Color.appTextSecondary)
 
                     Divider()
                         .background(Color.appDivider)

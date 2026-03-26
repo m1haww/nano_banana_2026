@@ -1,25 +1,22 @@
-//
-//  CreateViewModel.swift
-//  AI Image Generator
-//
-
 import SwiftUI
 import UIKit
 import Combine
 
 @MainActor
 final class CreateViewModel: ObservableObject {
+    private let generationCost = 10
+
     @Published var prompt: String = ""
     @Published var referenceImage: UIImage?
     @Published var generatedImage: UIImage?
-    @Published var isGenerating: Bool = false
+    @Published var isGenerating: Bool = true
     @Published var errorMessage: String?
     @Published var didJustGenerate: Bool = false
-    /// Aspect ratio sent to API (e.g. "1:1", "16:9"). Must match Poyo/Nano Banana 2 allowed values.
     @Published var aspectRatio: String = "1:1"
 
     private let api = GeminiAPIService.shared
-    private let gallery = ImagePromptManager.shared
+    private let gallery = GalleryService.shared
+    private let subscription = SubscriptionService.shared
 
     func clearReferenceImage() {
         referenceImage = nil
@@ -29,12 +26,15 @@ final class CreateViewModel: ObservableObject {
         referenceImage = image
     }
 
-    func generate() async {
-        let text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else {
-            errorMessage = "Enter a prompt"
+    /// `stylePrefix` is only a label (e.g. image style); generation is blocked unless the user’s prompt is non-empty after trimming.
+    func generate(stylePrefix: String = "") async {
+        let userPart = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !userPart.isEmpty else {
+            errorMessage = "Please enter a prompt before generating."
             return
         }
+
+        let text = stylePrefix + userPart
 
         errorMessage = nil
         generatedImage = nil
@@ -57,7 +57,13 @@ final class CreateViewModel: ObservableObject {
                     self.generatedImage = img
                     self.didJustGenerate = true
                     if self.gallery.saveImage(img, withPrompt: prompt, originalImagePath: nil) != nil {
-                        // saved to gallery
+                        print("Image was saved to the gallery")
+                    }
+                    UserService.shared.addCredits(-self.generationCost) { success in
+                        guard success else { return }
+                        DispatchQueue.main.async {
+                            self.subscription.addCredits(-self.generationCost)
+                        }
                     }
                 } else if let text = response.result.text {
                     self.errorMessage = "No image: \(text)"
