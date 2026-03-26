@@ -9,7 +9,7 @@ final class CreateViewModel: ObservableObject {
     @Published var prompt: String = ""
     @Published var referenceImage: UIImage?
     @Published var generatedImage: UIImage?
-    @Published var isGenerating: Bool = true
+    @Published var isGenerating: Bool = false
     @Published var errorMessage: String?
     @Published var didJustGenerate: Bool = false
     @Published var aspectRatio: String = "1:1"
