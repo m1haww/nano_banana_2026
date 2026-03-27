@@ -19,12 +19,14 @@ final class OnboardingCoordinator: ObservableObject {
     func completeIntro() {
         UserDefaults.standard.set(true, forKey: introKey)
         hasCompletedIntro = true
-    }
-
-    func completeWelcomeFlow() {
-        UserDefaults.standard.set(true, forKey: welcomeKey)
-        hasCompletedWelcomeFlow = true
         UserService.shared.registerIfNeeded()
         SubscriptionService.shared.presentPaywallAfterWelcomeIfNeeded()
     }
+
+//    func completeWelcomeFlow() {
+//        UserDefaults.standard.set(true, forKey: welcomeKey)
+//        hasCompletedWelcomeFlow = true
+//        UserService.shared.registerIfNeeded()
+//        SubscriptionService.shared.presentPaywallAfterWelcomeIfNeeded()
+//    }
 }

@@ -13,13 +13,14 @@ struct RootView: View {
                 OnboardingView {
                     onboarding.completeIntro()
                 }
-            } else if !onboarding.hasCompletedWelcomeFlow {
-                WelcomeFreeGenerationView {
-                    onboarding.completeWelcomeFlow()
-                }
             } else {
                 ContentView()
             }
+            
+//            else if !onboarding.hasCompletedWelcomeFlow {
+//                WelcomeFreeGenerationView {
+//                    onboarding.completeWelcomeFlow()
+//                }
         }
         .fullScreenCover(isPresented: $subscriptionService.showPaywall) {
             PaywallView()

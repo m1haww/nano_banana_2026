@@ -1,10 +1,3 @@
-//
-//  ProfileView.swift
-//  AI Image Generator
-//
-//  Header fix, summary card, vertical gallery history from local JSON + SavedImages.
-//
-
 import SwiftUI
 
 struct ProfileView: View {
