@@ -18,6 +18,16 @@ final class OnboardingCoordinator: ObservableObject {
     @Published var onboardingValue: OnboardingValue = .v3
     
     private let remoteConfigKey = "onboardingValue"
+
+    /// Minimum time between Remote Config network fetches. `0` fetches on every `fetch()` call; production should be much larger.
+    private var remoteConfigMinimumFetchInterval: TimeInterval {
+        #if DEBUG
+        60
+        #else
+        43_200
+        #endif
+    }
+
     private var remoteConfig: RemoteConfig {
         RemoteConfig.remoteConfig()
     }
@@ -30,7 +40,7 @@ final class OnboardingCoordinator: ObservableObject {
         do {
             let remoteConfig = RemoteConfig.remoteConfig()
             let settings = RemoteConfigSettings()
-            settings.minimumFetchInterval = 0
+            settings.minimumFetchInterval = remoteConfigMinimumFetchInterval
             remoteConfig.configSettings = settings
             
             _ = try await remoteConfig.fetch()
