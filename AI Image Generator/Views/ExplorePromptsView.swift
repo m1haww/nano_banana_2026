@@ -80,17 +80,17 @@ struct ExplorePromptsView: View {
                             }
                             .padding(.top, 24)
 
-                            Text("What would you\nlike to create?")
+                            Text(String(localized: "What would you\nlike to create?"))
                                 .font(.system(size: 26, weight: .bold, design: .rounded))
                                 .foregroundStyle(Color.appText)
                                 .multilineTextAlignment(.center)
                                 .lineSpacing(4)
 
                             VStack(spacing: 6) {
-                                Text("Your AI prompt helper")
+                                Text(String(localized: "Your AI prompt helper"))
                                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.appAccent)
-                                Text("Pick a style, describe your idea, and we'll\ncraft the perfect prompt for you.")
+                                Text(String(localized: "Pick a style, describe your idea, and we'll\ncraft the perfect prompt for you."))
                                     .font(.system(size: 13, weight: .regular, design: .rounded))
                                     .foregroundStyle(Color.appTextSecondary)
                                     .multilineTextAlignment(.center)
@@ -108,7 +108,7 @@ struct ExplorePromptsView: View {
                         if isGenerating {
                             HStack(spacing: 10) {
                                 ProgressView().tint(Color.appAccent)
-                                Text("Generating prompt...")
+                                Text(String(localized: "Generating prompt..."))
                                     .font(.system(size: 14, weight: .medium, design: .rounded))
                                     .foregroundStyle(Color.appTextSecondary)
                             }
@@ -124,7 +124,7 @@ struct ExplorePromptsView: View {
 
                         if !generatedPrompt.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Generated Prompt")
+                                Text(String(localized: "Generated Prompt"))
                                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.appAccent)
                                 Text(generatedPrompt)
@@ -140,7 +140,7 @@ struct ExplorePromptsView: View {
                                 } label: {
                                     HStack(spacing: 8) {
                                         Image(systemName: "checkmark.circle.fill")
-                                        Text("Use this prompt")
+                                        Text(String(localized: "Use this prompt"))
                                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                                     }
                                     .foregroundStyle(Color.appBackground)
@@ -179,7 +179,7 @@ struct ExplorePromptsView: View {
             VStack(spacing: 6) {
                 Text(type.emoji)
                     .font(.system(size: 26))
-                Text(type.label)
+                Text(type.label.localized)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
@@ -219,7 +219,7 @@ struct ExplorePromptsView: View {
                     TextField(
                         "",
                         text: $inputText,
-                        prompt: Text("Describe your image...")
+                        prompt: Text(String(localized: "Describe your image..."))
                             .foregroundColor(Color.appText.opacity(0.62)),
                         axis: .vertical
                     )
@@ -280,7 +280,7 @@ struct ExplorePromptsView: View {
                 }
                 generatedPrompt = response.generated_prompt
                 if generatedPrompt.isEmpty {
-                    generationError = "No prompt was generated."
+                    generationError = String(localized: "No prompt was generated.")
                 }
             case .failure(let err):
                 generationError = err.localizedDescription

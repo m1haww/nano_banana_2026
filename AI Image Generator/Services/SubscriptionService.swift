@@ -9,16 +9,13 @@ final class SubscriptionService: ObservableObject {
     @Published var credits: Int = 0
     @Published var showPaywall: Bool = false
     @Published var showShop: Bool = false
-    /// Only the RevenueCat offering used by the in-app shop.
     @Published private(set) var offering: Offering?
 
     private let creditsStorageKey = "com.nano.credits.balance"
 
     var hasActiveSubscription: Bool { isSubscribed }
 
-    private init() {
-        credits = UserDefaults.standard.integer(forKey: creditsStorageKey)
-    }
+    private init() {}
 
     private func persistCredits() {
         UserDefaults.standard.set(credits, forKey: creditsStorageKey)
@@ -26,13 +23,11 @@ final class SubscriptionService: ObservableObject {
 
     func addCredits(_ amount: Int) {
         credits = max(0, credits + amount)
-        persistCredits()
     }
 
     /// Replaces local cached credits with server truth.
     func setCredits(_ amount: Int) {
         credits = max(0, amount)
-        persistCredits()
     }
 
     func fetchStatus() {

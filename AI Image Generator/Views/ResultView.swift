@@ -60,7 +60,7 @@ struct ResultView: View {
                     .foregroundStyle(Color.appText)
             }
             Spacer()
-            Text("Result")
+            Text(String(localized: "Result"))
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color.appText)
             Spacer()
@@ -69,7 +69,7 @@ struct ResultView: View {
                 onFinalize()
                 dismiss()
             } label: {
-                Text("Finalize")
+                Text(String(localized: "Finalize"))
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.appAccent)
             }
@@ -89,23 +89,23 @@ struct ResultView: View {
 
     private var dropdownsSection: some View {
         HStack(spacing: 10) {
-            dropdownMenu(title: "Style", value: $selectedStyle, options: styleOptions)
-            dropdownMenu(title: "Atmosphere", value: $selectedAtmosphere, options: atmosphereOptions)
-            dropdownMenu(title: "Aspect Ratio", value: $selectedAspectRatio, options: AspectRatioOption.allCases.map(\.rawValue))
+            dropdownMenu(title: String(localized: "Style"), value: $selectedStyle, options: styleOptions)
+            dropdownMenu(title: String(localized: "Atmosphere"), value: $selectedAtmosphere, options: atmosphereOptions)
+            dropdownMenu(title: String(localized: "Aspect Ratio"), value: $selectedAspectRatio, options: AspectRatioOption.allCases.map(\.rawValue))
         }
     }
 
     private func dropdownMenu(title: String, value: Binding<String>, options: [String]) -> some View {
         Menu {
             ForEach(options, id: \.self) { opt in
-                Button(opt) { value.wrappedValue = opt }
+                Button(opt.localized) { value.wrappedValue = opt }
             }
         } label: {
             HStack(spacing: 6) {
                 Text(title)
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.appTextSecondary)
-                Text((value.wrappedValue).count > 8 ? String((value.wrappedValue).prefix(8)) + "…" : value.wrappedValue)
+                Text(truncatedLocalizedSelection(value.wrappedValue))
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.appText)
                 Image(systemName: "chevron.down")
@@ -120,10 +120,18 @@ struct ResultView: View {
         }
     }
 
+    private func truncatedLocalizedSelection(_ raw: String) -> String {
+        let loc = raw.localized
+        if loc.count > 8 {
+            return String(loc.prefix(8)) + "…"
+        }
+        return loc
+    }
+
     private var editPromptSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Edit Prompt")
+                Text(String(localized: "Edit Prompt"))
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.appText)
                 Spacer()
@@ -135,7 +143,7 @@ struct ResultView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 14))
-                        Text("Re-generate")
+                        Text(String(localized: "Re-generate"))
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(Color.appAccent)
@@ -162,7 +170,7 @@ struct ResultView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 18))
-                    Text("Share")
+                    Text(String(localized: "Share"))
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                 }
                 .foregroundStyle(Color.appText)
@@ -175,7 +183,7 @@ struct ResultView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.down.circle.fill")
                         .font(.system(size: 18))
-                    Text("Download")
+                    Text(String(localized: "Download"))
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                 }
                 .foregroundStyle(.white)

@@ -5,22 +5,27 @@ import SwiftUI
 struct RootView: View {
     @StateObject private var onboarding = OnboardingCoordinator.shared
     @StateObject private var subscriptionService = SubscriptionService.shared
-    @State private var didSyncCreditsOnLaunch = false
 
     var body: some View {
         Group {
-            if !onboarding.hasCompletedIntro {
-                OnboardingView {
-                    onboarding.completeIntro()
+            if !onboarding.hasCompletedOnboarding {
+                switch onboarding.onboardingValue {
+                case .v1:
+                    OnboardingViewV1() {
+                        onboarding.completeIntro()
+                    }
+                case .v2:
+                    OnboardingViewV2() {
+                        onboarding.completeIntro()
+                    }
+                case .v3:
+                    OnboardingViewV3() {
+                        onboarding.completeIntro()
+                    }
                 }
             } else {
                 ContentView()
             }
-            
-//            else if !onboarding.hasCompletedWelcomeFlow {
-//                WelcomeFreeGenerationView {
-//                    onboarding.completeWelcomeFlow()
-//                }
         }
         .fullScreenCover(isPresented: $subscriptionService.showPaywall) {
             PaywallView()
@@ -53,15 +58,6 @@ struct RootView: View {
         }
         .fullScreenCover(isPresented: $subscriptionService.showShop) {
             ShopView()
-        }
-        .task {
-            guard !didSyncCreditsOnLaunch else { return }
-            didSyncCreditsOnLaunch = true
-            UserService.shared.fetchUserCreditsIfRegistered { credits in
-                guard let credits else { return }
-                subscriptionService.setCredits(credits)
-                print("Fetched credits for user: \(credits)")
-            }
         }
     }
 }

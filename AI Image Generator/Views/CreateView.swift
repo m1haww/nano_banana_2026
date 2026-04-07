@@ -17,10 +17,10 @@ struct CreateView: View {
             VStack(spacing: 28) {
                 // Header
                 VStack(spacing: 6) {
-                    Text("Create")
+                    Text(String(localized: "Create"))
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.appText)
-                    Text("Describe your image and let AI generate it")
+                    Text(String(localized: "Describe your image and let AI generate it"))
                         .font(.system(size: 15, weight: .regular, design: .rounded))
                         .foregroundStyle(Color.appTextSecondary)
                 }
@@ -37,7 +37,7 @@ struct CreateView: View {
                                     ProgressView()
                                         .scaleEffect(1.2)
                                         .tint(Color.appAccent)
-                                    Text("Generating…")
+                                    Text(String(localized: "Generating…"))
                                         .font(.system(size: 16, weight: .medium, design: .rounded))
                                         .foregroundStyle(Color.appTextSecondary)
                                 }
@@ -63,7 +63,7 @@ struct CreateView: View {
                                         showSaveConfirmation = true
                                     }
                                 } label: {
-                                    Label("Save", systemImage: "square.and.arrow.down")
+                                    Label(String(localized: "Save"), systemImage: "square.and.arrow.down")
                                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                                         .foregroundStyle(Color.appAccent)
                                 }
@@ -72,7 +72,7 @@ struct CreateView: View {
                                         ShareService.shared.present(items: [img, viewModel.prompt])
                                     }
                                 } label: {
-                                    Label("Share", systemImage: "square.and.arrow.up")
+                                    Label(String(localized: "Share"), systemImage: "square.and.arrow.up")
                                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                                         .foregroundStyle(Color.appAccent)
                                 }
@@ -96,7 +96,7 @@ struct CreateView: View {
 
                 // Prompt
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Prompt")
+                    Text(String(localized: "Prompt"))
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(Color.appText)
                     TextEditor(text: $viewModel.prompt)
@@ -117,7 +117,7 @@ struct CreateView: View {
 
                 // Reference image
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Reference image (optional)")
+                    Text(String(localized: "Reference image (optional)"))
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(Color.appText)
                     if let ref = viewModel.referenceImage {
@@ -149,10 +149,10 @@ struct CreateView: View {
                                     .font(.title2)
                                     .foregroundStyle(Color.appAccent)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Add reference image")
+                                    Text(String(localized: "Add reference image"))
                                         .font(.system(size: 15, weight: .medium, design: .rounded))
                                         .foregroundStyle(Color.appText)
-                                    Text("Optional style or subject reference")
+                                    Text(String(localized: "Optional style or subject reference"))
                                         .font(.system(size: 12, weight: .regular, design: .rounded))
                                         .foregroundStyle(Color.appTextSecondary)
                                 }
@@ -194,7 +194,7 @@ struct CreateView: View {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 18, weight: .semibold))
                         }
-                        Text(viewModel.isGenerating ? "Generating…" : "Generate image")
+                        Text(viewModel.isGenerating ? String(localized: "Generating…") : String(localized: "Generate image"))
                             .font(.system(size: 18, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(.white)
@@ -217,10 +217,10 @@ struct CreateView: View {
         }
         .background(Color.appBackground)
         .onTapGesture { promptFocused = false }
-        .alert("Saved", isPresented: $showSaveConfirmation) {
-            Button("OK", role: .cancel) {}
+        .alert(String(localized: "Saved"), isPresented: $showSaveConfirmation) {
+            Button(String(localized: "OK"), role: .cancel) {}
         } message: {
-            Text("Image saved to Photos.")
+            Text(String(localized: "Image saved to Photos."))
         }
     }
 }

@@ -204,41 +204,71 @@ final class GeminiAPIService: ObservableObject {
 
     /// Poyo / Nano Banana 2: submit task → poll status → download image.
     /// aspectRatio: one of 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9 (per Poyo API docs).
+    /// If `image` is set, it is uploaded via ``FileService`` first and the returned preview URL is sent as `input.image_urls`.
     func createImage(prompt: String, image: UIImage? = nil, aspectRatio: String = "1:1", model: String = "nano-banana-2-new", completion: @escaping (Result<ImageCreationResponse, APIError>) -> Void) {
-        guard let url = URL(string: "\(backendBaseURL)\(generateSubmitPath)") else {
-            completion(.failure(.invalidURL))
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let body = PoyoSubmitRequest(
-            model: model,
-            callback_url: nil,
-            input: PoyoInput(
-                prompt: prompt,
-                image_urls: nil,
-                size: aspectRatio,
-                resolution: "2K",
-                google_search: false
-            )
-        )
-        guard let bodyData = try? JSONEncoder().encode(body) else {
-            completion(.failure(.encodingError))
-            return
-        }
-        request.httpBody = bodyData
-        
-        print("Request body sent: \(String(decoding: bodyData, as: UTF8.self))")
-
         Task { [weak self] in
             guard let self else {
                 await MainActor.run { completion(.failure(.invalidResponse)) }
                 return
             }
-            let result = await self.performCreateImageFlow(submitRequest: request, prompt: prompt, model: model)
+
+            let hadReferenceImage = image != nil
+            let imageUrlStrings: [String]?
+            if let image {
+                do {
+                    let uploaded = try await FileService.shared.uploadImage(image, uploadPrefix: "generate-input")
+                    guard let key = uploaded.key, !key.isEmpty else {
+                        await MainActor.run {
+                            completion(.failure(.serverError("Image upload did not return a file key")))
+                        }
+                        return
+                    }
+                    imageUrlStrings = [FileService.shared.getFileUrl(key: key)]
+                    print("Urls string list: \(String(describing: imageUrlStrings))")
+                } catch {
+                    await MainActor.run {
+                        completion(.failure(.networkError(error.localizedDescription)))
+                    }
+                    return
+                }
+            } else {
+                imageUrlStrings = nil
+            }
+
+            guard let url = URL(string: "\(self.backendBaseURL)\(self.generateSubmitPath)") else {
+                await MainActor.run { completion(.failure(.invalidURL)) }
+                return
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let body = PoyoSubmitRequest(
+                model: model,
+                callback_url: nil,
+                input: PoyoInput(
+                    prompt: prompt,
+                    image_urls: imageUrlStrings,
+                    size: aspectRatio,
+                    resolution: "2K",
+                    google_search: false
+                )
+            )
+            guard let bodyData = try? JSONEncoder().encode(body) else {
+                await MainActor.run { completion(.failure(.encodingError)) }
+                return
+            }
+            request.httpBody = bodyData
+
+            print("Request body sent: \(String(decoding: bodyData, as: UTF8.self))")
+
+            let result = await self.performCreateImageFlow(
+                submitRequest: request,
+                prompt: prompt,
+                model: model,
+                hasInputImage: hadReferenceImage
+            )
             await MainActor.run {
                 completion(result)
             }
@@ -246,7 +276,12 @@ final class GeminiAPIService: ObservableObject {
     }
 
     /// Submit → poll status → download image using `URLSession.data(for:)`.
-    private func performCreateImageFlow(submitRequest: URLRequest, prompt: String, model: String) async -> Result<ImageCreationResponse, APIError> {
+    private func performCreateImageFlow(
+        submitRequest: URLRequest,
+        prompt: String,
+        model: String,
+        hasInputImage: Bool
+    ) async -> Result<ImageCreationResponse, APIError> {
         let session = NetworkService.shared.safeSession()
         do {
             let (data, response) = try await session.data(for: submitRequest)
@@ -270,7 +305,7 @@ final class GeminiAPIService: ObservableObject {
                 return .failure(.decodingError)
             }
             let taskId = submitResp.data.task_id
-            switch await pollTaskStatus(taskId: taskId, pollInterval: 2.5, timeout: 90) {
+            switch await pollTaskStatus(taskId: taskId, pollInterval: 10, timeout: 240) {
             case .success(let imageURLString):
                 switch await downloadImage(from: imageURLString) {
                 case .success(let uiImage):
@@ -280,7 +315,7 @@ final class GeminiAPIService: ObservableObject {
                     let wrapped = ImageCreationResponse(
                         model: model,
                         prompt: prompt,
-                        hasInputImage: false,
+                        hasInputImage: hasInputImage,
                         result: ImageCreationResult(text: nil, images: [gen])
                     )
                     return .success(wrapped)
@@ -308,6 +343,7 @@ final class GeminiAPIService: ObservableObject {
         while Date().timeIntervalSince(start) <= timeout {
             do {
                 let (data, response) = try await session.data(for: request)
+                
                 guard let http = response as? HTTPURLResponse, http.statusCode == 200,
                       let statusResp = try? JSONDecoder().decode(PoyoStatusResponse.self, from: data) else {
                     return .failure(.invalidResponse)

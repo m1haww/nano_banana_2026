@@ -91,7 +91,7 @@ struct HomeView: View {
                         // Enter Prompt
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
-                                Text("Enter Prompt")
+                                Text(String(localized: "Enter Prompt"))
                                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.appText)
                                 Spacer()
@@ -99,7 +99,7 @@ struct HomeView: View {
                                     showExplorePrompts = true
                                 } label: {
                                     HStack(spacing: 4) {
-                                        Text("Explore Prompts")
+                                        Text(String(localized: "Explore Prompts"))
                                             .font(.system(size: 14, weight: .medium, design: .rounded))
                                         Image(systemName: "arrow.right")
                                             .font(.system(size: 12, weight: .semibold))
@@ -108,9 +108,65 @@ struct HomeView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
-                            
+                            .padding(.bottom, 12)
+
+                            HStack(alignment: .center, spacing: 10) {
+                                PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .fill(Color.appBackground.opacity(0.5))
+                                                .frame(width: 52, height: 52)
+                                            if let ref = viewModel.referenceImage {
+                                                Image(uiImage: ref)
+                                                    .resizable()
+                                                    .scaledToFill()
+                                                    .frame(width: 52, height: 52)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                            } else {
+                                                Image(systemName: "photo.badge.plus")
+                                                    .font(.system(size: 20, weight: .medium))
+                                                    .foregroundStyle(Color.appAccent)
+                                            }
+                                        }
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(viewModel.referenceImage == nil ? String(localized: "Add a photo") : String(localized: "Reference photo"))
+                                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                                .foregroundStyle(Color.appText)
+                                        }
+                                        Spacer(minLength: 4)
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(Color.appTextSecondary.opacity(0.55))
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color.appPromptBackground.opacity(0.5))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(Color.appDivider.opacity(0.85), lineWidth: 1)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+
+                                if viewModel.referenceImage != nil {
+                                    Button {
+                                        clearReferencePhoto()
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 26))
+                                            .symbolRenderingMode(.hierarchical)
+                                            .foregroundStyle(Color.appTextSecondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(String(localized: "Remove reference photo"))
+                                }
+                            }
+
                             ZStack(alignment: .topLeading) {
-                                Text("Describe anything, let our AI robot create magic for you...")
+                                Text(String(localized: "Describe anything, let our AI robot create magic for you..."))
                                     .font(.system(size: 16, weight: .regular, design: .rounded))
                                     .foregroundStyle(Color.appTextSecondary)
                                     .padding(12)
@@ -118,7 +174,7 @@ struct HomeView: View {
                                     .opacity(viewModel.prompt.isEmpty ? 1 : 0)
                                 AlignedPromptField(
                                     text: $viewModel.prompt,
-                                    placeholder: "Describe anything...",
+                                    placeholder: String(localized: "Describe anything..."),
                                     font: .systemFont(ofSize: 16, weight: .regular),
                                     textColor: .white,
                                     tintColor: .yellow,
@@ -140,7 +196,7 @@ struct HomeView: View {
 
                         // Aspect Ratio — ScrollView pe toată lățimea; padding doar pe titlu și pe conținutul scroll-ului (stânga+dreapta simetric)
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Aspect Ratio")
+                            Text(String(localized: "Aspect Ratio"))
                                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 .foregroundStyle(Color.appText)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -164,7 +220,7 @@ struct HomeView: View {
 
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
-                                Text("Image Style")
+                                Text(String(localized: "Image Style"))
                                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.appText)
                                 Spacer()
@@ -205,7 +261,7 @@ struct HomeView: View {
                             Task { await viewModel.generate(stylePrefix: stylePrefix) }
                         } label: {
                             HStack(spacing: 3) {
-                                Text("Generate 10")
+                                Text(String(localized: "Generate 10"))
                                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                                 Image(systemName: "film")
                                     .font(.system(size: 18, weight: .semibold))
@@ -248,6 +304,9 @@ struct HomeView: View {
         }
         /// System `.alert` action labels use the environment tint; switch to black while an alert is up.
         .tint(alertActionsTint)
+        .onChange(of: selectedPhotoItem) { newItem in
+            Task { await loadPickedPhoto(newItem) }
+        }
         .onChange(of: viewModel.errorMessage) { newValue in
             if let msg = newValue, !msg.isEmpty {
                 errorAlertMessage = msg
@@ -269,13 +328,13 @@ struct HomeView: View {
                 viewModel.prompt = selected
             }
         }
-        .alert("Saved", isPresented: $showSaveConfirmation) {
-            Button("OK", role: .cancel) {}
+        .alert(String(localized: "Saved"), isPresented: $showSaveConfirmation) {
+            Button(String(localized: "OK"), role: .cancel) {}
         } message: {
-            Text("Image saved to Photos.")
+            Text(String(localized: "Image saved to Photos."))
         }
-        .alert("Notice", isPresented: $showErrorAlert) {
-            Button("OK", role: .cancel) {
+        .alert(String(localized: "Notice"), isPresented: $showErrorAlert) {
+            Button(String(localized: "OK"), role: .cancel) {
                 viewModel.errorMessage = nil
             }
         } message: {
@@ -300,6 +359,34 @@ struct HomeView: View {
         }
     }
 
+    private func loadPickedPhoto(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                await MainActor.run {
+                    errorAlertMessage = String(localized: "Could not load this photo.")
+                    showErrorAlert = true
+                }
+                return
+            }
+            await MainActor.run {
+                viewModel.setReferenceImage(image)
+            }
+        } catch {
+            await MainActor.run {
+                errorAlertMessage = String(localized: "Could not load this photo.")
+                showErrorAlert = true
+            }
+        }
+    }
+
+    private func clearReferencePhoto() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        selectedPhotoItem = nil
+        viewModel.clearReferenceImage()
+    }
+
     private var selectedStyleCard: CategoryCard? {
         cards.first(where: { $0.id == selectedImageStyleId })
     }
@@ -312,7 +399,7 @@ struct HomeView: View {
     private var homeHeader: some View {
         HStack(spacing: 12) {
             appIcon
-            Text("AI Image")
+            Text(String(localized: "AI Image"))
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.appText)
             Spacer()
@@ -350,7 +437,7 @@ struct HomeView: View {
                             Image(systemName: "crown.fill")
                                 .font(.system(size: 12, weight: .semibold))
                                 .frame(width: 14, alignment: .center)
-                            Text("Pro")
+                            Text(String(localized: "Pro"))
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.85)
@@ -442,7 +529,7 @@ struct HomeGenerationResultView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 20))
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Your creation")
+                            Text(String(localized: "Your creation"))
                                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                                 .foregroundStyle(Color.appAccent)
                             Text(prompt)
@@ -456,7 +543,7 @@ struct HomeGenerationResultView: View {
 
                         HStack(spacing: 12) {
                             Button(action: onShare) {
-                                Label("Share", systemImage: "square.and.arrow.up")
+                                Label(String(localized: "Share"), systemImage: "square.and.arrow.up")
                                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.appAccent)
                                     .frame(maxWidth: .infinity)
@@ -467,7 +554,7 @@ struct HomeGenerationResultView: View {
                             .buttonStyle(.plain)
 
                             Button(action: onSave) {
-                                Label("Save", systemImage: "square.and.arrow.down")
+                                Label(String(localized: "Save"), systemImage: "square.and.arrow.down")
                                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.appBackground)
                                     .frame(maxWidth: .infinity)
@@ -483,7 +570,7 @@ struct HomeGenerationResultView: View {
                                 onContinueToApp?()
                                 dismiss()
                             } label: {
-                                Text("Continue to app")
+                                Text(String(localized: "Continue to app"))
                                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.appBackground)
                                     .frame(maxWidth: .infinity)
@@ -519,7 +606,7 @@ private struct AspectRatioButton: View {
             VStack(spacing: 8) {
                 AspectRatioShapeView(ratioString: option.rawValue)
                     .foregroundStyle(isSelected ? .white : Color.appAccent)
-                Text(option.rawValue)
+                Text(option.rawValue.localized)
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(isSelected ? .white : Color.appAccent)
             }
@@ -591,36 +678,6 @@ private struct AspectRatioShapeView: View {
     }
 }
 
-// MARK: - Skeleton loading pentru Image Style cards (pulse)
-private struct ImageStyleSkeletonCard: View {
-    private let size: CGFloat = 140
-    @State private var opacity: Double = 0.4
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.appPromptBackground)
-                .frame(width: size, height: size)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.appAccent.opacity(opacity * 0.35))
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color.appPromptBackground)
-                .frame(width: size * 0.6, height: 14)
-                .opacity(0.8 + opacity * 0.2)
-        }
-        .frame(width: size)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
-                opacity = 0.9
-            }
-        }
-    }
-}
-
 // MARK: - Square Image Style card: image on top, title (category) below
 private struct ImageStyleCardView: View {
     let card: CategoryCard
@@ -663,7 +720,7 @@ private struct ImageStyleCardView: View {
                         .stroke(isSelected ? Color.appAccent : Color.clear, lineWidth: 2)
                 )
 
-                Text(card.category)
+                Text(card.category.localized)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(isSelected ? Color.appAccent : Color.appText)
                     .lineLimit(1)

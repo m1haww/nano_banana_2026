@@ -5,7 +5,15 @@ enum MainTab: String, Hashable {
     case home = "Home"
     case discover = "Discover"
     case profile = "Profile"
-    
+
+    var localizedTitle: String {
+        switch self {
+        case .home: return String(localized: "Home")
+        case .discover: return String(localized: "Discover")
+        case .profile: return String(localized: "Profile")
+        }
+    }
+
     var icon: String {
         switch self {
         case .home: return "house.fill"
@@ -24,7 +32,7 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             HomeView(initialPromptFromDiscover: $pendingPromptFromDiscover)
                 .tabItem {
-                    Label(MainTab.home.rawValue, systemImage: MainTab.home.icon)
+                    Label(MainTab.home.localizedTitle, systemImage: MainTab.home.icon)
                 }
                 .tag(MainTab.home)
             
@@ -33,13 +41,13 @@ struct ContentView: View {
                 selectedTab = .home
             })
             .tabItem {
-                Label(MainTab.discover.rawValue, systemImage: MainTab.discover.icon)
+                Label(MainTab.discover.localizedTitle, systemImage: MainTab.discover.icon)
             }
             .tag(MainTab.discover)
             
             ProfileView()
                 .tabItem {
-                    Label(MainTab.profile.rawValue, systemImage: MainTab.profile.icon)
+                    Label(MainTab.profile.localizedTitle, systemImage: MainTab.profile.icon)
                 }
                 .tag(MainTab.profile)
         }

@@ -36,15 +36,15 @@ struct ShopView: View {
                 bottomBar
             }
         }
-        .alert("Purchase Error", isPresented: $showError) {
-            Button("OK", role: .cancel) {}
+        .alert(String(localized: "Purchase Error"), isPresented: $showError) {
+            Button(String(localized: "OK"), role: .cancel) {}
         } message: {
             Text(errorMessage)
         }
-        .alert("Purchase Successful", isPresented: $showSuccessAlert) {
-            Button("OK") { dismiss() }
+        .alert(String(localized: "Purchase Successful"), isPresented: $showSuccessAlert) {
+            Button(String(localized: "OK")) { dismiss() }
         } message: {
-            Text("\(purchasedCredits) credits have been added to your balance.")
+            Text(String(format: String(localized: "%lld credits have been added to your balance."), purchasedCredits))
         }
         .onAppear {
             subscription.fetchStatus()
@@ -69,7 +69,7 @@ struct ShopView: View {
 
             Spacer()
 
-            Text("Purchase Credits")
+            Text(String(localized: "Purchase Credits"))
                 .font(.system(size: 20, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color.appText)
 
@@ -86,12 +86,12 @@ struct ShopView: View {
 
     private var balanceCard: some View {
         VStack(spacing: 10) {
-            Text("\(subscription.credits) Credits")
+            Text(String(format: String(localized: "%lld Credits"), subscription.credits))
                 .font(.system(size: 36, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.appText)
                 .monospacedDigit()
 
-            Text("Available balance")
+            Text(String(localized: "Available balance"))
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundStyle(Color.appText.opacity(0.85))
         }
@@ -118,7 +118,7 @@ struct ShopView: View {
 
     private var choosePackageSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Choose package")
+            Text(String(localized: "Choose package"))
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.appText)
                 .padding(.horizontal, 20)
@@ -162,24 +162,24 @@ struct ShopView: View {
                             .foregroundStyle(Color.appAccent)
                     }
 
-                    Text("AI Pro")
+                    Text(String(localized: "AI Pro"))
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.appText)
 
                     Spacer()
                 }
 
-                Text("Unlock premium generation:")
+                Text(String(localized: "Unlock premium generation:"))
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.appTextSecondary)
 
                 VStack(spacing: 12) {
-                    proFeatureRow("Priority processing")
-                    proFeatureRow("Pro models & styles")
-                    proFeatureRow("No watermark")
+                    proFeatureRow(String(localized: "Priority processing"))
+                    proFeatureRow(String(localized: "Pro models & styles"))
+                    proFeatureRow(String(localized: "No watermark"))
                 }
 
-                Text("Upgrade to Pro")
+                Text(String(localized: "Upgrade to Pro"))
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.appBackground)
                     .frame(maxWidth: .infinity)
@@ -227,7 +227,7 @@ struct ShopView: View {
         VStack(spacing: 10) {
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(selectedCredits) Credits")
+                    Text(String(format: String(localized: "%lld Credits"), selectedCredits))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.appText)
                         .monospacedDigit()
@@ -243,7 +243,7 @@ struct ShopView: View {
                                 .tint(Color.appBackground)
                                 .scaleEffect(0.9)
                         } else {
-                            Text("Purchase")
+                            Text(String(localized: "Purchase"))
                                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                         }
                     }
@@ -265,7 +265,7 @@ struct ShopView: View {
             Button {
                 handleRestore()
             } label: {
-                Text("Restore purchases")
+                Text(String(localized: "Restore purchases"))
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.appTextSecondary)
             }
@@ -297,7 +297,7 @@ struct ShopView: View {
             if error == nil {
                 return
             }
-            errorMessage = error?.localizedDescription ?? "Purchase failed."
+            errorMessage = error?.localizedDescription ?? String(localized: "Purchase failed.")
             showError = true
         }
     }
@@ -310,7 +310,7 @@ struct ShopView: View {
                 dismiss()
                 return
             }
-            errorMessage = error?.localizedDescription ?? "Nothing to restore."
+            errorMessage = error?.localizedDescription ?? String(localized: "Nothing to restore.")
             showError = true
         }
     }
@@ -356,7 +356,7 @@ private struct ShopCreditPackageCard: View {
 
                 Spacer(minLength: 0)
 
-                Text("\(credits) Credits")
+                Text(String(format: String(localized: "%lld Credits"), credits))
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.appText)
 

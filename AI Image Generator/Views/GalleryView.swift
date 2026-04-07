@@ -87,10 +87,10 @@ struct GalleryView: View {
 
     private var galleryHeader: some View {
         VStack(spacing: 6) {
-            Text("Discover")
+            Text(String(localized: "Discover"))
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color.appText)
-            Text("Get inspired")
+            Text(String(localized: "Get inspired"))
                 .font(.system(size: 15, weight: .regular, design: .rounded))
                 .foregroundStyle(Color.appTextSecondary)
         }
@@ -275,7 +275,7 @@ struct DiscoverDetailView: View {
                                 onCreateVariant?()
                                 onDismiss()
                             } label: {
-                                Label("Create variant", systemImage: "wand.and.stars")
+                                Label(String(localized: "Create variant"), systemImage: "wand.and.stars")
                                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.appBackground)
                                     .frame(maxWidth: .infinity)
@@ -373,7 +373,7 @@ struct GalleryDetailView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Prompt")
+                            Text(String(localized: "Prompt"))
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundStyle(Color.appTextSecondary)
                             Text(item.prompt)
@@ -396,7 +396,7 @@ struct GalleryDetailView: View {
                                 HStack(spacing: 10) {
                                     Image(systemName: "square.and.arrow.down")
                                         .font(.system(size: 17, weight: .semibold))
-                                    Text("Save to Photos")
+                                    Text(String(localized: "Save to Photos"))
                                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 }
                                 .foregroundStyle(Color.appBackground)
@@ -423,7 +423,7 @@ struct GalleryDetailView: View {
                                 HStack(spacing: 10) {
                                     Image(systemName: "trash")
                                         .font(.system(size: 16, weight: .semibold))
-                                    Text("Delete")
+                                    Text(String(localized: "Delete"))
                                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                                 }
                                 .foregroundStyle(
@@ -465,19 +465,19 @@ struct GalleryDetailView: View {
                 }
             }
         }
-        .alert("Saved", isPresented: $showSaveConfirmation) {
-            Button("OK", role: .cancel) {}
+        .alert(String(localized: "Saved"), isPresented: $showSaveConfirmation) {
+            Button(String(localized: "OK"), role: .cancel) {}
         } message: {
-            Text("Image saved to Photos.")
+            Text(String(localized: "Image saved to Photos."))
         }
-        .alert("Delete image?", isPresented: $showDeleteConfirm) {
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) {
+        .alert(String(localized: "Delete image?"), isPresented: $showDeleteConfirm) {
+            Button(String(localized: "Cancel"), role: .cancel) {}
+            Button(String(localized: "Delete"), role: .destructive) {
                 gallery.removeGalleryItem(id: item.id)
                 onDismiss()
             }
         } message: {
-            Text("This cannot be undone.")
+            Text(String(localized: "This cannot be undone."))
         }
     }
 }

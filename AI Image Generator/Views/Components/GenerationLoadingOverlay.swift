@@ -83,10 +83,10 @@ struct GenerationLoadingOverlay: View {
                 }
 
                 VStack(spacing: 6) {
-                    Text("Creating your image")
+                    Text(String(localized: "Creating your image"))
                         .font(.system(size: 19, weight: .semibold, design: .rounded))
                         .foregroundStyle(Color.appText)
-                    Text("Hang tight — this usually takes a few seconds.")
+                    Text(String(localized: "Hang tight — this usually takes a few seconds."))
                         .font(.system(size: 14, weight: .regular, design: .rounded))
                         .foregroundStyle(Color.appTextSecondary)
                         .multilineTextAlignment(.center)

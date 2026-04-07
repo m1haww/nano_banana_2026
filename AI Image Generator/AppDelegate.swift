@@ -2,9 +2,12 @@ import SwiftUI
 import RevenueCat
 import AdSupport
 import AppTrackingTransparency
+import FirebaseCore
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        FirebaseApp.configure()
+        
         Purchases.logLevel = .info
         Purchases.configure(withAPIKey: "appl_wfjeylCpgzCljHTFnUcXFrnMqob", appUserID: UserService.shared.userId)
         

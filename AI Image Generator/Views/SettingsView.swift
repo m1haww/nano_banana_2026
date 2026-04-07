@@ -12,10 +12,10 @@ struct SettingsView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
                 VStack(spacing: 6) {
-                    Text("Profile")
+                    Text(String(localized: "Profile"))
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.appText)
-                    Text("App preferences and info")
+                    Text(String(localized: "App preferences and info"))
                         .font(.system(size: 15, weight: .regular, design: .rounded))
                         .foregroundStyle(Color.appTextSecondary)
                 }
@@ -24,8 +24,8 @@ struct SettingsView: View {
                 VStack(spacing: 0) {
                     SettingsRow(
                         icon: "key.fill",
-                        title: "Image generation",
-                        value: api.isBackendImageProxyEnabled ? "Server proxy" : "Not configured"
+                        title: String(localized: "Image generation"),
+                        value: api.isBackendImageProxyEnabled ? String(localized: "Server proxy") : String(localized: "Not configured")
                     )
                     .foregroundStyle(api.isBackendImageProxyEnabled ? Color.appAccent : Color.appTextSecondary)
 
@@ -35,8 +35,8 @@ struct SettingsView: View {
 
                     SettingsRow(
                         icon: "info.circle.fill",
-                        title: "App",
-                        value: "AI Image Generator"
+                        title: String(localized: "App"),
+                        value: String(localized: "AI Image Generator")
                     )
                 }
                 .background(Color.appCard)

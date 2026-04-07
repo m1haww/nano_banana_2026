@@ -7,7 +7,27 @@ struct AI_Image_GeneratorApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            AppLaunchContainer()
+        }
+    }
+}
+
+private struct AppLaunchContainer: View {
+    @State private var showSplash = true
+
+    var body: some View {
+        ZStack {
+            if showSplash {
+                SplashView {
+                    withAnimation(.easeInOut(duration: 0.45)) {
+                        showSplash = false
+                    }
+                }
+                .transition(.opacity)
+                .zIndex(1)
+            } else {
+                RootView()
+            }
         }
     }
 }

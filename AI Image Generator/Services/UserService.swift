@@ -103,40 +103,35 @@ final class UserService: ObservableObject {
     }
 
     /// GET /api/user/credits/<user_id>, only when local registration is already done.
-    func fetchUserCreditsIfRegistered(completion: ((Int?) -> Void)? = nil) {
+    func fetchUserCreditsIfRegistered() async -> Int? {
         guard isRegisteredLocally else {
-            completion?(nil)
-            return
+            return nil
         }
         guard let url = URL(string: "\(backendBaseURL)/api/user/credits/\(userId)") else {
-            completion?(nil)
-            return
+            return nil
         }
 
-        Task {
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.timeoutInterval = 30
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 30
 
-            do {
-                let (data, response) = try await NetworkService.shared.safeSession().data(for: request)
-                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-                guard statusCode == 200 else {
-                    if let apiError = try? JSONDecoder().decode(UserCreditsResponse.self, from: data),
-                       let message = apiError.error {
-                        print("Fetch user credits failed: \(message)")
-                    } else {
-                        print("Fetch user credits failed with status: \(statusCode)")
-                    }
-                    completion?(nil)
-                    return
+        do {
+            let (data, response) = try await NetworkService.shared.safeSession().data(for: request)
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard statusCode == 200 else {
+                if let apiError = try? JSONDecoder().decode(UserCreditsResponse.self, from: data),
+                   let message = apiError.error {
+                    print("Fetch user credits failed: \(message)")
+                } else {
+                    print("Fetch user credits failed with status: \(statusCode)")
                 }
-                let payload = try JSONDecoder().decode(UserCreditsResponse.self, from: data)
-                completion?(payload.user?.credits)
-            } catch {
-                print("Fetch user credits request error: \(error.localizedDescription)")
-                completion?(nil)
+                return nil
             }
+            let payload = try JSONDecoder().decode(UserCreditsResponse.self, from: data)
+            return payload.user?.credits
+        } catch {
+            print("Fetch user credits request error: \(error.localizedDescription)")
+            return nil
         }
     }
 }

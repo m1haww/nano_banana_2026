@@ -50,10 +50,10 @@ struct ProfileView: View {
                     .font(.system(size: 26))
                     .foregroundStyle(Color.appAccent)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Credits & shop")
+                    Text(String(localized: "Credits & shop"))
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .foregroundStyle(Color.appText)
-                    Text("\(subscription.credits) credits available")
+                    Text(String(format: String(localized: "%lld credits available"), subscription.credits))
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundStyle(Color.appTextSecondary)
                 }
@@ -76,7 +76,7 @@ struct ProfileView: View {
     private var recentSavedList: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Your saves")
+                Text(String(localized: "Your saves"))
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.appText)
                 Spacer()
@@ -98,7 +98,7 @@ struct ProfileView: View {
     private var profileHeader: some View {
         HStack {
             Spacer()
-            Text("Profile")
+            Text(String(localized: "Profile"))
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color.appText)
             Spacer()
@@ -162,12 +162,12 @@ struct ProfileView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Your library")
+                        Text(String(localized: "Your library"))
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.appAccent.opacity(0.95))
                             .textCase(.uppercase)
                             .tracking(0.6)
-                        Text("Creations kept on this device")
+                        Text(String(localized: "Creations kept on this device"))
                             .font(.system(size: 14, weight: .medium, design: .rounded))
                             .foregroundStyle(Color.appTextSecondary)
                     }
@@ -184,7 +184,7 @@ struct ProfileView: View {
                     .contentTransition(.numericText())
                     .monospacedDigit()
 
-                Text(count == 1 ? "image saved" : "images saved")
+                Text(count == 1 ? String(localized: "image saved") : String(localized: "images saved"))
                     .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.appTextSecondary)
                     .padding(.top, 6)
