@@ -1,6 +1,7 @@
 import Combine
 import SwiftUI
 import FirebaseRemoteConfig
+import RevenueCat
 
 enum OnboardingValue: String {
     case v1 = "v1"
@@ -51,6 +52,7 @@ final class OnboardingCoordinator: ObservableObject {
             
             await MainActor.run {
                 self.onboardingValue = variant
+                Purchases.shared.attribution.setAttributes(["onboardingVariant": variant.rawValue])
             }
             
             print("Fetched onboarding variant: \(variant.rawValue)")
