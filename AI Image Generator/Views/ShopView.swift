@@ -24,10 +24,6 @@ struct ShopView: View {
 
                         choosePackageSection
 
-                        if !subscription.hasActiveSubscription {
-                            proPlanCard
-                        }
-
                         Spacer(minLength: 22)
                     }
                     .padding(.top, 16)
@@ -123,101 +119,19 @@ struct ShopView: View {
                 .foregroundStyle(Color.appText)
                 .padding(.horizontal, 20)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(ShopCreditPackage.catalog) { package in
-                        ShopCreditPackageCard(
-                            credits: package.credits,
-                            price: subscription.localizedPrice(forProductId: package.id) ?? "—",
-                            discount: package.discount,
-                            isSelected: selectedProductId == package.id
-                        ) {
-                            selectedProductId = package.id
-                        }
+            VStack(spacing: 10) {
+                ForEach(ShopCreditPackage.catalog) { package in
+                    ShopCreditPackageCard(
+                        credits: package.credits,
+                        price: subscription.localizedPrice(forProductId: package.id) ?? "—",
+                        discount: package.discount,
+                        isSelected: selectedProductId == package.id
+                    ) {
+                        selectedProductId = package.id
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 2)
             }
-        }
-    }
-
-    // MARK: - Pro
-
-    private var proPlanCard: some View {
-        Button {
-            subscription.showShop = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: {
-                subscription.showPaywall = true
-            })
-        } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.appCard)
-                            .frame(width: 50, height: 50)
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(Color.appAccent)
-                    }
-
-                    Text(String(localized: "AI Pro"))
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.appText)
-
-                    Spacer()
-                }
-
-                Text(String(localized: "Unlock premium generation:"))
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.appTextSecondary)
-
-                VStack(spacing: 12) {
-                    proFeatureRow(String(localized: "Priority processing"))
-                    proFeatureRow(String(localized: "Pro models & styles"))
-                    proFeatureRow(String(localized: "No watermark"))
-                }
-
-                Text(String(localized: "Upgrade to Pro"))
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.appBackground)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                    .background(Color.appAccent)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .padding(.top, 20)
-            }
-            .padding(22)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.appCard)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [Color.appAccent.opacity(0.6), Color.appAccent.opacity(0.15)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
-                            )
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 20)
-    }
-
-    private func proFeatureRow(_ text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(Color.appAccent)
-            Text(text)
-                .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.appText)
-            Spacer()
+            .padding(.horizontal, 20)
         }
     }
 
@@ -327,45 +241,47 @@ private struct ShopCreditPackageCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    if let discount = discount {
-                        Text(discount)
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.appBackground)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color.appAccent)
-                            .clipShape(Capsule())
-                    }
-                    Spacer()
-                    ZStack {
+            HStack(spacing: 14) {
+                // Radio circle
+                ZStack {
+                    Circle()
+                        .stroke(
+                            isSelected ? Color.appAccent : Color.appDivider,
+                            lineWidth: 2
+                        )
+                        .frame(width: 24, height: 24)
+                    if isSelected {
                         Circle()
-                            .stroke(
-                                isSelected ? Color.appAccent : Color.appDivider,
-                                lineWidth: 2
-                            )
-                            .frame(width: 24, height: 24)
-                        if isSelected {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Color.appAccent)
-                        }
+                            .fill(Color.appAccent)
+                            .frame(width: 14, height: 14)
                     }
                 }
 
-                Spacer(minLength: 0)
+                // Credits + price
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(String(format: String(localized: "%lld Credits"), credits))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.appText)
+                    Text(price)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.appTextSecondary)
+                }
 
-                Text(String(format: String(localized: "%lld Credits"), credits))
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.appText)
+                Spacer()
 
-                Text(price)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.appTextSecondary)
+                // Badge
+                if let discount = discount {
+                    Text(discount)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.appBackground)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.appAccent)
+                        .clipShape(Capsule())
+                }
             }
-            .padding(18)
-            .frame(width: 248, height: 152)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color.appCard)

@@ -18,8 +18,8 @@ struct GalleryView: View {
     ]
 
     /// Înălțimi Pinterest: stânga tall–short–tall, dreapta short–tall–short.
-    private let leftHeights: [CGFloat] = [220, 160, 220, 160, 220, 160]
-    private let rightHeights: [CGFloat] = [160, 220, 160, 220, 160, 220]
+    private let leftHeights: [CGFloat] = [240, 190, 240, 190, 240, 190]
+    private let rightHeights: [CGFloat] = [190, 240, 190, 240, 190, 240]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -295,44 +295,6 @@ struct DiscoverDetailView: View {
     }
 }
 
-private struct GalleryThumbCard: View {
-    let item: GalleryHistoryItem
-    @ObservedObject private var gallery = GalleryService.shared
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ZStack {
-                if let img = gallery.loadImage(from: item.imagePath) {
-                    Image(uiImage: img)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    Color.appPromptBackground
-                        .overlay(
-                            Image(systemName: "photo")
-                                .font(.title)
-                                .foregroundStyle(Color.appTextSecondary)
-                        )
-                }
-            }
-            .frame(height: 200)
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-
-            Text(item.prompt)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.appTextSecondary)
-                .lineLimit(2)
-                .padding(.top, 8)
-                .padding(.horizontal, 4)
-        }
-        .padding(12)
-        .background(Color.appCard)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
-    }
-}
-
 struct GalleryDetailView: View {
     let item: GalleryHistoryItem
     let onDismiss: () -> Void
@@ -354,7 +316,12 @@ struct GalleryDetailView: View {
                             .frame(width: 44, height: 44)
                     }
                     Spacer()
-                    Button(action: onShare) {
+                    Button(action: {
+                        gallery.selectedGalleryItem = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            onShare()
+                        }
+                    }) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(Color.appText)

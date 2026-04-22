@@ -47,6 +47,8 @@
 "Drag horizontally to compare images" = "Træk vandret for at sammenligne billeder";
 "Drag the slider to compare the original with a clean AI cutout—perfect for products and profiles." = "Træk skyderen for at sammenligne originalen med et rent AI-udklip—perfekt til produkter og profiler.";
 "Download" = "Download";
+"Edit %lld" = "Rediger %lld";
+"Edit 10" = "Rediger 10";
 "Edit Prompt" = "Rediger prompt";
 "Edited photos and videos" = "Redigerede fotos og videoer";
 "Enter Prompt" = "Indtast prompt";
@@ -55,6 +57,7 @@
 "Fast results and polished looks—my go-to for social posts." = "Hurtige resultater og poleret udseende—mit førstevalg til sociale opslag.";
 "Finish" = "Afslut";
 "Glam Makeover" = "Glamourøs makeover";
+"Generate %lld" = "Generer %lld";
 "Generate 10" = "Generer 10";
 "Generate image" = "Generer billede";
 "Generated Prompt" = "Genereret prompt";
@@ -115,6 +118,7 @@
 "Realistic" = "Realistisk";
 "Re-generate" = "Generer igen";
 "Reference image (optional)" = "Referencebillede (valgfrit)";
+"Resolution" = "Opløsning";
 "Reference photo" = "Referencefoto";
 "Remove Background" = "Fjern baggrund";
 "Remove reference photo" = "Fjern referencefoto";
@@ -180,13 +184,21 @@
 "Take a look at these fun ways that people are using Nano Banana on Gemini to reimagine their photos." = "Tag et kig på disse sjove måder, som folk bruger Nano Banana på Gemini til at genforestille deres fotos.";
 
 /* Aspect ratio labels (Poyo / UI) */
+"1K" = "1K";
+"2K" = "2K";
+"4K" = "4K";
+"auto" = "Auto";
 "1:1" = "1:1";
+"1:4" = "1:4";
+"1:8" = "1:8";
 "2:3" = "2:3";
 "3:2" = "3:2";
 "3:4" = "3:4";
+"4:1" = "4:1";
 "4:3" = "4:3";
 "4:5" = "4:5";
 "5:4" = "5:4";
+"8:1" = "8:1";
 "9:16" = "9:16";
 "16:9" = "16:9";
 "21:9" = "21:9";
@@ -197,3 +209,5 @@
 "People and characters" = "Mennesker og karakterer";
 "Magic, creatures, worlds" = "Magi, væsener, verdener";
 "Clean and simple visuals" = "Rene og enkle visualiseringer";
+
+"Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Dit billede er ved at blive genereret. Du er velkommen til at fortsætte med at bruge appen — vi giver dig besked, når det er klart!";

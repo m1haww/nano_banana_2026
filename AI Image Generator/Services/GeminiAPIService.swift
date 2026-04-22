@@ -54,6 +54,8 @@ struct PoyoSubmitRequest: Encodable {
     let model: String
     let callback_url: String?
     let input: PoyoInput
+    var user_id: String?
+    var fcm_token: String?
 }
 
 struct PoyoInput: Encodable {
@@ -177,10 +179,11 @@ final class GeminiAPIService: ObservableObject {
     static let shared = GeminiAPIService()
 
     /// Backend (Railway). Image generation is proxied here; Poyo API key stays on the server.
-    private let backendBaseURL = "https://nano-banana-api-production-fa0e.up.railway.app"
+    private let backendBaseURL = "https://nano-banana-api-production-4035.up.railway.app"
     /// Image job submit (proxies to Poyo on the server). Body matches Poyo: model, callback_url, input { prompt, size, resolution, … }.
     private let generateSubmitPath = "/api/generate"
     private let generateStatusPath = "/api/generate/status"
+    private let callBackPath = "/api/task/postback"
 
     @Published var userId: String?
     private let userIdKey = "nanoBananaUserId"
@@ -202,18 +205,75 @@ final class GeminiAPIService: ObservableObject {
         }
     }
 
-    /// Poyo / Nano Banana 2: submit task → poll status → download image.
-    /// aspectRatio: one of 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9 (per Poyo API docs).
-    /// If `image` is set, it is uploaded via ``FileService`` first and the returned preview URL is sent as `input.image_urls`.
-    func createImage(prompt: String, image: UIImage? = nil, aspectRatio: String = "1:1", model: String = "nano-banana-2-new", completion: @escaping (Result<ImageCreationResponse, APIError>) -> Void) {
+    /// Fire-and-forget: submits the task to the backend and returns the task ID immediately.
+    /// The backend handles the Poyo callback and sends a push notification when done.
+    func submitImageTask(
+        prompt: String,
+        imageUrls: [String]?,
+        aspectRatio: String = "1:1",
+        resolution: String = "1K",
+        model: String = "nano-banana-2-new",
+        userId: String,
+        fcmToken: String?
+    ) async throws -> String {
+        guard let url = URL(string: "\(backendBaseURL)\(generateSubmitPath)") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body = PoyoSubmitRequest(
+            model: model,
+            callback_url: "\(backendBaseURL)\(callBackPath)",
+            input: PoyoInput(
+                prompt: prompt,
+                image_urls: imageUrls,
+                size: aspectRatio,
+                resolution: resolution,
+                google_search: false
+            ),
+            user_id: userId,
+            fcm_token: fcmToken
+        )
+        guard let bodyData = try? JSONEncoder().encode(body) else {
+            throw APIError.encodingError
+        }
+        request.httpBody = bodyData
+
+        let session = NetworkService.shared.safeSession()
+        let (data, response) = try await session.data(for: request)
+
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            let msg: String
+            if let flaskErr = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                msg = flaskErr.error
+            } else {
+                msg = String(data: data, encoding: .utf8) ?? "Submit failed"
+            }
+            throw APIError.serverError(msg)
+        }
+
+        guard let submitResp = try? JSONDecoder().decode(PoyoSubmitResponse.self, from: data) else {
+            throw APIError.decodingError
+        }
+
+        return submitResp.data.task_id
+    }
+
+    /// Fire-and-forget image generation.
+    /// Submits the task, saves it via VideoTaskService, and returns immediately.
+    /// The backend handles the Poyo callback and sends a push notification when done.
+    func createImage(prompt: String, image: UIImage? = nil, aspectRatio: String = "1:1", model: String = "nano-banana-2-new", resolution: String, completion: @escaping (Result<String, APIError>) -> Void) {
         Task { [weak self] in
             guard let self else {
                 await MainActor.run { completion(.failure(.invalidResponse)) }
                 return
             }
 
-            let hadReferenceImage = image != nil
-            let imageUrlStrings: [String]?
+            // Upload reference image if present
+            var imageUrlStrings: [String]? = nil
             if let image {
                 do {
                     let uploaded = try await FileService.shared.uploadImage(image, uploadPrefix: "generate-input")
@@ -224,113 +284,42 @@ final class GeminiAPIService: ObservableObject {
                         return
                     }
                     imageUrlStrings = [FileService.shared.getFileUrl(key: key)]
-                    print("Urls string list: \(String(describing: imageUrlStrings))")
                 } catch {
                     await MainActor.run {
                         completion(.failure(.networkError(error.localizedDescription)))
                     }
                     return
                 }
-            } else {
-                imageUrlStrings = nil
             }
 
-            guard let url = URL(string: "\(self.backendBaseURL)\(self.generateSubmitPath)") else {
-                await MainActor.run { completion(.failure(.invalidURL)) }
-                return
-            }
-
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            let body = PoyoSubmitRequest(
-                model: model,
-                callback_url: nil,
-                input: PoyoInput(
+            do {
+                let taskId = try await self.submitImageTask(
                     prompt: prompt,
-                    image_urls: imageUrlStrings,
-                    size: aspectRatio,
-                    resolution: "2K",
-                    google_search: false
+                    imageUrls: imageUrlStrings,
+                    aspectRatio: aspectRatio,
+                    resolution: resolution,
+                    model: model,
+                    userId: UserService.shared.userId,
+                    fcmToken: UserService.shared.fcmToken
                 )
-            )
-            guard let bodyData = try? JSONEncoder().encode(body) else {
-                await MainActor.run { completion(.failure(.encodingError)) }
-                return
-            }
-            request.httpBody = bodyData
 
-            print("Request body sent: \(String(decoding: bodyData, as: UTF8.self))")
+                // Save as pending task
+                await VideoTaskService.shared.addPendingTask(
+                    VideoTask(id: taskId, userId: UserService.shared.userId, prompt: prompt)
+                )
 
-            let result = await self.performCreateImageFlow(
-                submitRequest: request,
-                prompt: prompt,
-                model: model,
-                hasInputImage: hadReferenceImage
-            )
-            await MainActor.run {
-                completion(result)
+                await MainActor.run { completion(.success(taskId)) }
+            } catch let error as APIError {
+                await MainActor.run { completion(.failure(error)) }
+            } catch {
+                await MainActor.run { completion(.failure(.networkError(error.localizedDescription))) }
             }
         }
     }
 
-    /// Submit → poll status → download image using `URLSession.data(for:)`.
-    private func performCreateImageFlow(
-        submitRequest: URLRequest,
-        prompt: String,
-        model: String,
-        hasInputImage: Bool
-    ) async -> Result<ImageCreationResponse, APIError> {
-        let session = NetworkService.shared.safeSession()
-        do {
-            let (data, response) = try await session.data(for: submitRequest)
-            guard let http = response as? HTTPURLResponse else {
-                return .failure(.invalidResponse)
-            }
-            print("API response: \(String(data: data, encoding: .utf8) ?? "<too long>")")
-            
-            guard http.statusCode == 200 else {
-                let msg: String
-                if let flaskErr = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
-                    msg = flaskErr.error
-                } else if let poyoErr = try? JSONDecoder().decode(PoyoErrorResponse.self, from: data), let m = poyoErr.error?.message {
-                    msg = m
-                } else {
-                    msg = String(data: data, encoding: .utf8).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : $0 } ?? "Request failed"
-                }
-                return .failure(.serverError(msg))
-            }
-            guard let submitResp = try? JSONDecoder().decode(PoyoSubmitResponse.self, from: data) else {
-                return .failure(.decodingError)
-            }
-            let taskId = submitResp.data.task_id
-            switch await pollTaskStatus(taskId: taskId, pollInterval: 10, timeout: 240) {
-            case .success(let imageURLString):
-                switch await downloadImage(from: imageURLString) {
-                case .success(let uiImage):
-                    let jpegData = uiImage.jpegData(compressionQuality: 0.9)
-                    let base64 = jpegData?.base64EncodedString()
-                    let gen = GeneratedImage(data: base64, mimeType: "image/jpeg")
-                    let wrapped = ImageCreationResponse(
-                        model: model,
-                        prompt: prompt,
-                        hasInputImage: hasInputImage,
-                        result: ImageCreationResult(text: nil, images: [gen])
-                    )
-                    return .success(wrapped)
-                case .failure(let err):
-                    return .failure(err)
-                }
-            case .failure(let err):
-                return .failure(err)
-            }
-        } catch {
-            return .failure(.networkError(error.localizedDescription))
-        }
-    }
-
-    private func pollTaskStatus(taskId: String, pollInterval: TimeInterval, timeout: TimeInterval) async -> Result<String, APIError> {
+    /// Polls the backend for task status. Returns the file URL on success.
+    /// Intended to be called from a background Task (not blocking UI).
+    func pollTaskStatus(taskId: String, pollInterval: TimeInterval = 10, timeout: TimeInterval = 300) async -> Result<PoyoStatusData, APIError> {
         guard let url = URL(string: "\(backendBaseURL)\(generateStatusPath)/\(taskId)") else {
             return .failure(.invalidURL)
         }
@@ -338,24 +327,19 @@ final class GeminiAPIService: ObservableObject {
         request.httpMethod = "GET"
         let session = NetworkService.shared.safeSession()
         let start = Date()
-        let sleepNs = UInt64(max(pollInterval, 0.1) * 1_000_000_000)
+        let sleepNs = UInt64(max(pollInterval, 1) * 1_000_000_000)
 
         while Date().timeIntervalSince(start) <= timeout {
             do {
                 let (data, response) = try await session.data(for: request)
-                
                 guard let http = response as? HTTPURLResponse, http.statusCode == 200,
                       let statusResp = try? JSONDecoder().decode(PoyoStatusResponse.self, from: data) else {
-                    return .failure(.invalidResponse)
+                    try await Task.sleep(nanoseconds: sleepNs)
+                    continue
                 }
-                let status = statusResp.data.status
-                switch status {
+                switch statusResp.data.status {
                 case "finished":
-                    if let fileURL = statusResp.data.files.first(where: { $0.file_type == "image" })?.file_url {
-                        return .success(fileURL)
-                    } else {
-                        return .failure(.serverError("No image in response"))
-                    }
+                    return .success(statusResp.data)
                 case "failed":
                     let msg = statusResp.data.error_message ?? "Generation failed"
                     return .failure(.serverError(msg))
@@ -367,22 +351,6 @@ final class GeminiAPIService: ObservableObject {
             }
         }
         return .failure(.serverError("Generation timed out"))
-    }
-
-    private func downloadImage(from urlString: String) async -> Result<UIImage, APIError> {
-        guard let url = URL(string: urlString) else {
-            return .failure(.invalidURL)
-        }
-        let session = NetworkService.shared.safeSession()
-        do {
-            let (data, _) = try await session.data(for: URLRequest(url: url))
-            guard let img = UIImage(data: data) else {
-                return .failure(.noData)
-            }
-            return .success(img)
-        } catch {
-            return .failure(.networkError(error.localizedDescription))
-        }
     }
 
     func fetchDiscover(completion: @escaping (Result<[DiscoverItem], APIError>) -> Void) {
@@ -412,137 +380,6 @@ final class GeminiAPIService: ObservableObject {
             DispatchQueue.main.async {
                 completion(result)
             }
-        }.resume()
-    }
-
-    func promptAssistantChat(prompt: String, completion: @escaping (Result<PromptAssistantChatResponse, APIError>) -> Void) {
-        guard let url = URL(string: "\(backendBaseURL)/api/prompt-assistant/chat") else {
-            completion(.failure(.invalidURL))
-            return
-        }
-        print("[PromptAssistant] TRIMIT: prompt=\(prompt.prefix(80))...")
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body = PromptAssistantChatRequest(prompt: prompt)
-        guard let bodyData = try? JSONEncoder().encode(body) else {
-            completion(.failure(.encodingError))
-            return
-        }
-        request.httpBody = bodyData
-        NetworkService.shared.safeSession().dataTask(with: request) { data, response, error in
-            let result: Result<PromptAssistantChatResponse, APIError>
-            if let error = error {
-                print("[PromptAssistant] PRIMIT: network error=\(error.localizedDescription)")
-                result = .failure(.networkError(error.localizedDescription))
-            } else if let http = response as? HTTPURLResponse, let data = data {
-                if http.statusCode != 200 {
-                    let bodyStr = String(data: data, encoding: .utf8) ?? ""
-                    switch http.statusCode {
-                    case 401:
-                        print("[PromptAssistant] EROARE 401 Unauthorized – API key lipsă sau invalidă. body=\(bodyStr.prefix(300))")
-                    case 403:
-                        print("[PromptAssistant] EROARE 403 Forbidden – Acces interzis. body=\(bodyStr.prefix(300))")
-                    case 404:
-                        print("[PromptAssistant] EROARE 404 Not Found – URL incorect sau resursă inexistentă. body=\(bodyStr.prefix(300))")
-                    case 500:
-                        print("[PromptAssistant] EROARE 500 Server Error – Eroare pe server (ex. OPEN_AI_KEY). body=\(bodyStr.prefix(300))")
-                    case 503:
-                        print("[PromptAssistant] EROARE 503 Service Unavailable – Serviciu indisponibil (ex. prompt assistant neconfigurat). body=\(bodyStr.prefix(300))")
-                    default:
-                        print("[PromptAssistant] EROARE HTTP \(http.statusCode). body=\(bodyStr.prefix(300))")
-                    }
-                    result = .failure(.unexpectedStatusCode(http.statusCode))
-                } else {
-                    do {
-                        let decoded = try JSONDecoder().decode(PromptAssistantChatResponse.self, from: data)
-                        let contentPreview = (decoded.message?.content ?? "").prefix(80)
-                        print("[PromptAssistant] PRIMIT: success, content=\(contentPreview)...")
-                        if let err = decoded.error, !err.isEmpty {
-                            print("[PromptAssistant] PRIMIT: error in response=\(err)")
-                        }
-                        result = .success(decoded)
-                    } catch {
-                        print("[PromptAssistant] PRIMIT: decode error=\(error)")
-                        result = .failure(.decodingError)
-                    }
-                }
-            } else {
-                print("[PromptAssistant] PRIMIT: no data")
-                result = .failure(.noData)
-            }
-            DispatchQueue.main.async { completion(result) }
-        }.resume()
-    }
-
-    /// Salvează promptul pentru userul curent.
-    func promptAssistantSave(promptText: String, title: String?, completion: @escaping (Result<SavedPromptItem, APIError>) -> Void) {
-        guard let url = URL(string: "\(backendBaseURL)/api/prompt-assistant/save") else {
-            completion(.failure(.invalidURL))
-            return
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body = PromptAssistantSaveRequest(prompt_text: promptText, title: title)
-        guard let bodyData = try? JSONEncoder().encode(body) else {
-            completion(.failure(.encodingError))
-            return
-        }
-        request.httpBody = bodyData
-        NetworkService.shared.safeSession().dataTask(with: request) { data, response, error in
-            let result: Result<SavedPromptItem, APIError>
-            if let error = error {
-                result = .failure(.networkError(error.localizedDescription))
-            } else if let http = response as? HTTPURLResponse, let data = data {
-                if http.statusCode != 201 {
-                    result = .failure(.unexpectedStatusCode(http.statusCode))
-                } else {
-                    do {
-                        let decoded = try JSONDecoder().decode(PromptAssistantSaveResponse.self, from: data)
-                        if let saved = decoded.saved_prompt {
-                            result = .success(saved)
-                        } else {
-                            result = .failure(.decodingError)
-                        }
-                    } catch {
-                        result = .failure(.decodingError)
-                    }
-                }
-            } else {
-                result = .failure(.noData)
-            }
-            DispatchQueue.main.async { completion(result) }
-        }.resume()
-    }
-
-    /// Listează prompturile salvate.
-    func promptAssistantSavedList(completion: @escaping (Result<PromptAssistantSavedResponse, APIError>) -> Void) {
-        guard let url = URL(string: "\(backendBaseURL)/api/prompt-assistant/saved") else {
-            completion(.failure(.invalidURL))
-            return
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        NetworkService.shared.safeSession().dataTask(with: request) { data, response, error in
-            let result: Result<PromptAssistantSavedResponse, APIError>
-            if let error = error {
-                result = .failure(.networkError(error.localizedDescription))
-            } else if let http = response as? HTTPURLResponse, let data = data {
-                if http.statusCode != 200 {
-                    result = .failure(.unexpectedStatusCode(http.statusCode))
-                } else {
-                    do {
-                        let decoded = try JSONDecoder().decode(PromptAssistantSavedResponse.self, from: data)
-                        result = .success(decoded)
-                    } catch {
-                        result = .failure(.decodingError)
-                    }
-                }
-            } else {
-                result = .failure(.noData)
-            }
-            DispatchQueue.main.async { completion(result) }
         }.resume()
     }
 }

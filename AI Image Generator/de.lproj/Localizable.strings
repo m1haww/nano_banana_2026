@@ -47,6 +47,8 @@
 "Drag horizontally to compare images" = "Horizontal ziehen zum Vergleichen";
 "Drag the slider to compare the original with a clean AI cutout—perfect for products and profiles." = "Ziehe den Schieberegler, um das Original mit einem sauberen KI-Ausschnitt zu vergleichen—perfekt für Produkte und Profile.";
 "Download" = "Herunterladen";
+"Edit %lld" = "Bearbeiten %lld";
+"Edit 10" = "Bearbeiten 10";
 "Edit Prompt" = "Prompt bearbeiten";
 "Edited photos and videos" = "Bearbeitete Fotos und Videos";
 "Enter Prompt" = "Prompt eingeben";
@@ -55,6 +57,7 @@
 "Fast results and polished looks—my go-to for social posts." = "Schnelle Ergebnisse und poliertes Aussehen—meine erste Wahl für Social-Media-Beiträge.";
 "Finish" = "Fertig";
 "Glam Makeover" = "Glamouröses Makeover";
+"Generate %lld" = "%lld generieren";
 "Generate 10" = "10 generieren";
 "Generate image" = "Bild generieren";
 "Generated Prompt" = "Generierter Prompt";
@@ -115,6 +118,7 @@
 "Realistic" = "Realistisch";
 "Re-generate" = "Neu generieren";
 "Reference image (optional)" = "Referenzbild (optional)";
+"Resolution" = "Auflösung";
 "Reference photo" = "Referenzfoto";
 "Remove Background" = "Hintergrund entfernen";
 "Remove reference photo" = "Referenzfoto entfernen";
@@ -180,13 +184,21 @@
 "Take a look at these fun ways that people are using Nano Banana on Gemini to reimagine their photos." = "Sieh dir diese unterhaltsamen Möglichkeiten an, wie Menschen Nano Banana auf Gemini nutzen, um ihre Fotos neu zu gestalten.";
 
 /* Aspect ratio labels (Poyo / UI) */
+"1K" = "1K";
+"2K" = "2K";
+"4K" = "4K";
+"auto" = "Auto";
 "1:1" = "1:1";
+"1:4" = "1:4";
+"1:8" = "1:8";
 "2:3" = "2:3";
 "3:2" = "3:2";
 "3:4" = "3:4";
+"4:1" = "4:1";
 "4:3" = "4:3";
 "4:5" = "4:5";
 "5:4" = "5:4";
+"8:1" = "8:1";
 "9:16" = "9:16";
 "16:9" = "16:9";
 "21:9" = "21:9";
@@ -197,3 +209,5 @@
 "People and characters" = "Menschen und Charaktere";
 "Magic, creatures, worlds" = "Magie, Kreaturen, Welten";
 "Clean and simple visuals" = "Klare und einfache Visuals";
+
+"Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Dein Bild wird gerade generiert. Du kannst die App gerne weiter nutzen — wir benachrichtigen dich, sobald es fertig ist!";

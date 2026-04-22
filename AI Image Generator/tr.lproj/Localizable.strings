@@ -47,6 +47,7 @@
 "Drag horizontally to compare images" = "Karşılaştırmak için yatay olarak sürükleyin";
 "Drag the slider to compare the original with a clean AI cutout—perfect for products and profiles." = "Kaydırıcıyı sürükleyerek orijinali temiz bir AI kesimiyle karşılaştırın—ürün fotoğrafları ve profiller için ideal.";
 "Download" = "İndir";
+"Edit 10" = "Düzenle 10";
 "Edit Prompt" = "İstemi düzenle";
 "Edited photos and videos" = "Düzenlenmiş fotoğraflar ve videolar";
 "Enter Prompt" = "İstem girin";
@@ -180,13 +181,18 @@
 "Take a look at these fun ways that people are using Nano Banana on Gemini to reimagine their photos." = "İnsanların fotoğraflarını yeniden hayal etmek için Gemini'de Nano Banana'yı bu eğlenceli şekillerde nasıl kullandığına göz atın.";
 
 /* Aspect ratio (UI) */
+"auto" = "Auto";
 "1:1" = "1:1";
+"1:4" = "1:4";
+"1:8" = "1:8";
 "2:3" = "2:3";
 "3:2" = "3:2";
 "3:4" = "3:4";
+"4:1" = "4:1";
 "4:3" = "4:3";
 "4:5" = "4:5";
 "5:4" = "5:4";
+"8:1" = "8:1";
 "9:16" = "9:16";
 "16:9" = "16:9";
 "21:9" = "21:9";
@@ -197,3 +203,10 @@
 "People and characters" = "İnsanlar ve karakterler";
 "Magic, creatures, worlds" = "Sihir, yaratıklar, dünyalar";
 "Clean and simple visuals" = "Temiz ve sade görseller";
+
+"Resolution" = "Çözünürlük";
+"1K" = "1K";
+"2K" = "2K";
+"4K" = "4K";
+
+"Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Görseliniz oluşturuluyor. Uygulamayı rahatça kullanmaya devam edebilirsiniz — hazır olduğunda size haber vereceğiz!";

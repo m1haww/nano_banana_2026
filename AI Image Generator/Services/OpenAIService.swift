@@ -14,7 +14,7 @@ struct PromptAssistantGenerateResponse: Decodable {
 final class OpenAIService: ObservableObject {
     static let shared = OpenAIService()
 
-    private let backendBaseURL = "https://nano-banana-api-production-fa0e.up.railway.app"
+    private let backendBaseURL = "https://nano-banana-api-production-4035.up.railway.app"
 
     private init() {}
 

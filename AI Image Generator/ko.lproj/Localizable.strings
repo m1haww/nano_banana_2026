@@ -47,6 +47,7 @@
 "Drag horizontally to compare images" = "좌우로 드래그하여 이미지를 비교하세요";
 "Drag the slider to compare the original with a clean AI cutout—perfect for products and profiles." = "슬라이더를 움직여 원본과 깔끔한 AI 누끼 이미지를 비교해 보세요. 제품 사진과 프로필에 알맞습니다.";
 "Download" = "다운로드";
+"Edit 10" = "편집 10";
 "Edit Prompt" = "프롬프트 편집";
 "Edited photos and videos" = "편집한 사진 및 동영상";
 "Enter Prompt" = "프롬프트 입력";
@@ -180,13 +181,18 @@
 "Take a look at these fun ways that people are using Nano Banana on Gemini to reimagine their photos." = "지미니(Gemini)에서 나노 바나나로 사진을 새롭게 만드는 재미있는 예시를 살펴 보세요.";
 
 /* Aspect ratio (UI labels — values often match keys) */
+"auto" = "Auto";
 "1:1" = "1:1";
+"1:4" = "1:4";
+"1:8" = "1:8";
 "2:3" = "2:3";
 "3:2" = "3:2";
 "3:4" = "3:4";
+"4:1" = "4:1";
 "4:3" = "4:3";
 "4:5" = "4:5";
 "5:4" = "5:4";
+"8:1" = "8:1";
 "9:16" = "9:16";
 "16:9" = "16:9";
 "21:9" = "21:9";
@@ -197,3 +203,10 @@
 "People and characters" = "사람과 캐릭터";
 "Magic, creatures, worlds" = "마법, 생명체, 세계관";
 "Clean and simple visuals" = "깔끔하고 단순한 비주얼";
+
+"Resolution" = "해상도";
+"1K" = "1K";
+"2K" = "2K";
+"4K" = "4K";
+
+"Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "이미지를 생성하고 있습니다. 앱을 계속 사용하셔도 괜찮습니다 — 완료되면 알려드릴게요!";

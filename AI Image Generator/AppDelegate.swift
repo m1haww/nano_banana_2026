@@ -3,6 +3,7 @@ import RevenueCat
 import AdSupport
 import AppTrackingTransparency
 import FirebaseCore
+import FirebaseMessaging
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -12,6 +13,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         Purchases.configure(withAPIKey: "appl_wfjeylCpgzCljHTFnUcXFrnMqob", appUserID: UserService.shared.userId)
         
         applyTabBarAppearance()
+        
+        UNUserNotificationCenter.current().delegate = self
         
         SubscriptionService.shared.fetchStatus()
         
@@ -24,9 +27,26 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             await requestATTPermission()
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            await handleNotificationPermissions(application: application)
         }
         
         return true
+    }
+    
+    @MainActor
+    private func handleNotificationPermissions(application: UIApplication) async {
+        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+        do {
+            let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: authOptions)
+            print("Notification authorization granted: \(granted)")
+        } catch {
+            print("Notification authorization error: \(error.localizedDescription)")
+        }
+        
+        application.registerForRemoteNotifications()
+        
+        Messaging.messaging().delegate = self
     }
     
     @MainActor
@@ -104,3 +124,44 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         tabBar.unselectedItemTintColor = secondary
     }
 }
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    /// Foreground: show banner + pass data to VideoTaskService.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification) async
+    -> UNNotificationPresentationOptions {
+        let userInfo = notification.request.content.userInfo
+        await MainActor.run {
+            VideoTaskService.shared.handleNotification(userInfo: userInfo)
+        }
+        return [[.banner, .badge, .sound]]
+    }
+
+    /// Background tap: pass data to VideoTaskService so the UI navigates to the result.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                didReceive response: UNNotificationResponse) async {
+        let userInfo = response.notification.request.content.userInfo
+        // Small delay to let the UI finish launching if coming from a cold start.
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        await MainActor.run {
+            VideoTaskService.shared.handleNotification(userInfo: userInfo)
+        }
+    }
+}
+
+extension AppDelegate: MessagingDelegate {
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let fcmToken = fcmToken else {
+            print("No FCM token received")
+            return
+        }
+        
+        UserService.shared.fcmToken = fcmToken
+    }
+    
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+    }
+}
+

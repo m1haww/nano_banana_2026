@@ -47,6 +47,8 @@
 "Drag horizontally to compare images" = "Táhni vodorovně pro porovnání obrázků";
 "Drag the slider to compare the original with a clean AI cutout—perfect for products and profiles." = "Posuň jezdec a porovnej originál s čistým AI výřezem — ideální pro produkty a profily.";
 "Download" = "Stáhnout";
+"Edit %lld" = "Upravit %lld";
+"Edit 10" = "Upravit 10";
 "Edit Prompt" = "Upravit prompt";
 "Edited photos and videos" = "Upravené fotky a videa";
 "Enter Prompt" = "Zadat prompt";
@@ -55,6 +57,7 @@
 "Fast results and polished looks—my go-to for social posts." = "Rychlé výsledky a propracovaný vzhled — moje volba pro příspěvky na sociálních sítích.";
 "Finish" = "Dokončit";
 "Glam Makeover" = "Glam proměna";
+"Generate %lld" = "Generovat %lld";
 "Generate 10" = "Generovat 10";
 "Generate image" = "Generovat obrázek";
 "Generated Prompt" = "Vygenerovaný prompt";
@@ -115,6 +118,7 @@
 "Realistic" = "Realistický";
 "Re-generate" = "Znovu vygenerovat";
 "Reference image (optional)" = "Referenční obrázek (volitelné)";
+"Resolution" = "Rozlišení";
 "Reference photo" = "Referenční fotka";
 "Remove Background" = "Odstranit pozadí";
 "Remove reference photo" = "Odstranit referenční fotku";
@@ -180,13 +184,21 @@
 "Take a look at these fun ways that people are using Nano Banana on Gemini to reimagine their photos." = "Podívej se na tyto zábavné způsoby, jak lidé používají Nano Banana na Gemini k reimaginaci svých fotek.";
 
 /* Aspect ratio labels (Poyo / UI) */
+"1K" = "1K";
+"2K" = "2K";
+"4K" = "4K";
+"auto" = "Auto";
 "1:1" = "1:1";
+"1:4" = "1:4";
+"1:8" = "1:8";
 "2:3" = "2:3";
 "3:2" = "3:2";
 "3:4" = "3:4";
+"4:1" = "4:1";
 "4:3" = "4:3";
 "4:5" = "4:5";
 "5:4" = "5:4";
+"8:1" = "8:1";
 "9:16" = "9:16";
 "16:9" = "16:9";
 "21:9" = "21:9";
@@ -197,3 +209,5 @@
 "People and characters" = "Lidé a postavy";
 "Magic, creatures, worlds" = "Magie, tvorové, světy";
 "Clean and simple visuals" = "Čistá a jednoduchá grafika";
+
+"Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Váš obrázek se generuje. Můžete aplikaci dál používat — dáme vám vědět, až bude hotový!";

@@ -47,6 +47,8 @@
 "Drag horizontally to compare images" = "Drag horizontally to compare images";
 "Drag the slider to compare the original with a clean AI cutout—perfect for products and profiles." = "Drag the slider to compare the original with a clean AI cutout—perfect for products and profiles.";
 "Download" = "Download";
+"Edit %lld" = "Edit %lld";
+"Edit 10" = "Edit 10";
 "Edit Prompt" = "Edit Prompt";
 "Edited photos and videos" = "Edited photos and videos";
 "Enter Prompt" = "Enter Prompt";
@@ -55,6 +57,7 @@
 "Fast results and polished looks—my go-to for social posts." = "Fast results and polished looks—my go-to for social posts.";
 "Finish" = "Finish";
 "Glam Makeover" = "Glam Makeover";
+"Generate %lld" = "Generate %lld";
 "Generate 10" = "Generate 10";
 "Generate image" = "Generate image";
 "Generated Prompt" = "Generated Prompt";
@@ -115,6 +118,7 @@
 "Realistic" = "Realistic";
 "Re-generate" = "Re-generate";
 "Reference image (optional)" = "Reference image (optional)";
+"Resolution" = "Resolution";
 "Reference photo" = "Reference photo";
 "Remove Background" = "Remove Background";
 "Remove reference photo" = "Remove reference photo";
@@ -180,16 +184,27 @@
 "Take a look at these fun ways that people are using Nano Banana on Gemini to reimagine their photos." = "Take a look at these fun ways that people are using Nano Banana on Gemini to reimagine their photos.";
 
 /* Aspect ratio labels (Poyo / UI) */
+"1K" = "1K";
+"2K" = "2K";
+"4K" = "4K";
+"auto" = "Auto";
 "1:1" = "1:1";
+"1:4" = "1:4";
+"1:8" = "1:8";
 "2:3" = "2:3";
 "3:2" = "3:2";
 "3:4" = "3:4";
+"4:1" = "4:1";
 "4:3" = "4:3";
 "4:5" = "4:5";
 "5:4" = "5:4";
+"8:1" = "8:1";
 "9:16" = "9:16";
 "16:9" = "16:9";
 "21:9" = "21:9";
+
+/* Task submitted popup */
+"Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!";
 
 /* Home image style cards (CategoryCard) */
 "Generate art-style images" = "Generate art-style images";

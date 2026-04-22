@@ -5,8 +5,8 @@ final class UserService: ObservableObject {
     static let shared = UserService()
     
     private let userIdKey = "userId"
-    private let backendBaseURL = "https://nano-banana-api-production-fa0e.up.railway.app"
-    private let registrationFlagPrefix = "user.registered."
+    private let backendBaseURL = "https://nano-banana-api-production-4035.up.railway.app"
+    private let registrationFlagPrefix = "user.registered"
     
     var userId: String {
         if let id = UserDefaults.standard.string(forKey: userIdKey) {
@@ -16,6 +16,13 @@ final class UserService: ObservableObject {
             UserDefaults.standard.set(newId, forKey: userIdKey)
             return newId
         }
+    }
+    
+    private let fcmTokenKey = "fcmToken"
+
+    var fcmToken: String? {
+        get { UserDefaults.standard.string(forKey: fcmTokenKey) }
+        set { UserDefaults.standard.set(newValue, forKey: fcmTokenKey) }
     }
 
     private var registrationKey: String {
@@ -30,6 +37,9 @@ final class UserService: ObservableObject {
         if UserDefaults.standard.bool(forKey: registrationKey) { return }
         guard var components = URLComponents(string: "\(backendBaseURL)/api/user/register") else { return }
         components.queryItems = [URLQueryItem(name: "user_id", value: userId)]
+        if fcmToken != nil {
+            components.queryItems?.append(URLQueryItem(name: "fcm_token", value: fcmToken!))
+        }
         guard let url = components.url else { return }
 
         Task {
@@ -102,14 +112,10 @@ final class UserService: ObservableObject {
         }
     }
 
-    /// GET /api/user/credits/<user_id>, only when local registration is already done.
-    func fetchUserCreditsIfRegistered() async -> Int? {
-        guard isRegisteredLocally else {
-            return nil
-        }
-        guard let url = URL(string: "\(backendBaseURL)/api/user/credits/\(userId)") else {
-            return nil
-        }
+    /// GET /api/user/data/<user_id> — fetches credits and tasks in one call.
+    func fetchUserData() async -> UserDataResponse? {
+        guard isRegisteredLocally else { return nil }
+        guard let url = URL(string: "\(backendBaseURL)/api/user/data/\(userId)") else { return nil }
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -119,33 +125,62 @@ final class UserService: ObservableObject {
             let (data, response) = try await NetworkService.shared.safeSession().data(for: request)
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard statusCode == 200 else {
-                if let apiError = try? JSONDecoder().decode(UserCreditsResponse.self, from: data),
-                   let message = apiError.error {
-                    print("Fetch user credits failed: \(message)")
+                if let body = try? JSONDecoder().decode(UserDataResponse.self, from: data),
+                   let message = body.error {
+                    print("Fetch user data failed: \(message)")
                 } else {
-                    print("Fetch user credits failed with status: \(statusCode)")
+                    print("Fetch user data failed with status: \(statusCode)")
                 }
                 return nil
             }
-            let payload = try JSONDecoder().decode(UserCreditsResponse.self, from: data)
-            return payload.user?.credits
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let payload = try decoder.decode(UserDataResponse.self, from: data)
+            return payload
         } catch {
-            print("Fetch user credits request error: \(error.localizedDescription)")
+            print("Fetch user data request error: \(error.localizedDescription)")
             return nil
         }
     }
 }
 
+// MARK: - Response models
+
 private struct RegisterErrorResponse: Decodable {
     let error: String
 }
 
-private struct UserCreditsResponse: Decodable {
+struct UserDataResponse: Decodable {
     let message: String?
-    let user: UserCreditsPayload?
+    let user: UserDataPayload?
+    let tasks: [VideoTask]?
+    let pagination: UserDataPagination?
     let error: String?
 }
 
-private struct UserCreditsPayload: Decodable {
+struct UserDataPayload: Decodable {
+    let id: String
     let credits: Int
+    let fcmToken: String?
+    let createdAt: String?
+    let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, credits
+        case fcmToken = "fcm_token"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
 }
+struct UserDataPagination: Decodable {
+    let total: Int
+    let limit: Int
+    let offset: Int
+    let hasMore: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case total, limit, offset
+        case hasMore = "has_more"
+    }
+}
+

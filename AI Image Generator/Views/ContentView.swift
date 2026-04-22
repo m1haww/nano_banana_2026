@@ -27,12 +27,15 @@ struct ContentView: View {
     @State private var selectedTab: MainTab = .home
     @State private var pendingPromptFromDiscover: String? = nil
     @StateObject private var shareService = ShareService.shared
+    @StateObject private var galleryService = GalleryService.shared
+    @State private var showGalleryDetails = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeView(initialPromptFromDiscover: $pendingPromptFromDiscover)
                 .tabItem {
                     Label(MainTab.home.localizedTitle, systemImage: MainTab.home.icon)
+                        .tint(Color.appAccent)
                 }
                 .tag(MainTab.home)
             
@@ -42,22 +45,39 @@ struct ContentView: View {
             })
             .tabItem {
                 Label(MainTab.discover.localizedTitle, systemImage: MainTab.discover.icon)
+                    .tint(Color.appAccent)
             }
             .tag(MainTab.discover)
             
             ProfileView()
                 .tabItem {
                     Label(MainTab.profile.localizedTitle, systemImage: MainTab.profile.icon)
+                        .tint(Color.appAccent)
                 }
                 .tag(MainTab.profile)
         }
-        .tint(Color.appAccent)
         .toolbarBackground(.visible, for: .tabBar)
         .sheet(isPresented: $shareService.isPresented, onDismiss: {
             shareService.clearPayload()
         }) {
             if !shareService.items.isEmpty {
                 ShareSheet(items: shareService.items)
+            }
+        }
+        .onChange(of: galleryService.selectedGalleryItem) { _ in
+            showGalleryDetails = galleryService.selectedGalleryItem != nil
+        }
+        .fullScreenCover(isPresented: $showGalleryDetails) {
+            if let item = galleryService.selectedGalleryItem {
+                GalleryDetailView(
+                    item: item,
+                    onDismiss: { galleryService.selectedGalleryItem = nil },
+                    onShare: {
+                        if let img = galleryService.loadImage(from: item.imagePath) {
+                            ShareService.shared.present(items: [img, item.prompt])
+                        }
+                    }
+                )
             }
         }
     }

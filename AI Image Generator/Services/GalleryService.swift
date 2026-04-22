@@ -12,6 +12,8 @@ final class GalleryService: ObservableObject {
     static let shared = GalleryService()
 
     @Published private(set) var galleryHistory: [GalleryHistoryItem] = []
+    
+    @Published var selectedGalleryItem: GalleryHistoryItem?
 
     private let documentsDirectory: URL
     private let galleryHistoryFileURL: URL
@@ -68,6 +70,84 @@ final class GalleryService: ObservableObject {
             return fileName
         } catch {
             return nil
+        }
+    }
+
+    @discardableResult
+    func saveImage(from imageURL: URL, withPrompt prompt: String) async -> String? {
+        do {
+            let (data, _) = try await URLSession.shared.data(from: imageURL)
+            let fileName = "\(UUID().uuidString).jpg"
+            let fileURL = imagesDirectory.appendingPathComponent(fileName)
+            try data.write(to: fileURL)
+            let item = GalleryHistoryItem(
+                imagePath: fileName,
+                prompt: prompt,
+                isAIGenerated: true
+            )
+            await MainActor.run {
+                galleryHistory.insert(item, at: 0)
+                saveGalleryHistory()
+            }
+            return fileName
+        } catch {
+            return nil
+        }
+    }
+
+    /// Insert a pending placeholder item (no image yet) tied to a backend task ID.
+    func addPendingItem(taskId: String, prompt: String) {
+        let item = GalleryHistoryItem(
+            imagePath: "",
+            prompt: prompt,
+            taskId: taskId,
+            status: .pending
+        )
+        galleryHistory.insert(item, at: 0)
+        saveGalleryHistory()
+    }
+
+    /// Update the pending gallery item once the image is ready. Downloads the image, saves it locally.
+    @discardableResult
+    func completeItem(taskId: String, imageURL: URL) async -> Bool {
+        do {
+            let (data, _) = try await URLSession.shared.data(from: imageURL)
+            let fileName = "\(UUID().uuidString).jpg"
+            let fileURL = imagesDirectory.appendingPathComponent(fileName)
+            try data.write(to: fileURL)
+
+            await MainActor.run {
+                if let index = galleryHistory.firstIndex(where: { $0.taskId == taskId }) {
+                    galleryHistory[index].imagePath = fileName
+                    galleryHistory[index].status = .success
+                    self.selectedGalleryItem = self.galleryHistory[index]
+                } else {
+                    // Fallback: item was removed — re-add it
+                    let item = GalleryHistoryItem(
+                        imagePath: fileName,
+                        prompt: "",
+                        taskId: taskId,
+                        status: .success
+                    )
+                    galleryHistory.insert(item, at: 0)
+                    self.selectedGalleryItem = item
+                }
+                saveGalleryHistory()
+            }
+            return true
+        } catch {
+            await MainActor.run {
+                markItemFailed(taskId: taskId)
+            }
+            return false
+        }
+    }
+
+    /// Mark a pending item as failed.
+    func markItemFailed(taskId: String) {
+        if let index = galleryHistory.firstIndex(where: { $0.taskId == taskId }) {
+            galleryHistory[index].status = .failed
+            saveGalleryHistory()
         }
     }
 

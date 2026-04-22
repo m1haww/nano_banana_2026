@@ -32,6 +32,7 @@ struct ExplorePromptsView: View {
     @State private var generatedPrompt: String = ""
     @State private var isGenerating: Bool = false
     @State private var generationError: String? = nil
+    @State private var showResult: Bool = false
 
     private let openAIService = OpenAIService.shared
     private let columns = [
@@ -104,63 +105,42 @@ struct ExplorePromptsView: View {
                             }
                         }
                         .padding(.horizontal, 4)
-
-                        if isGenerating {
-                            HStack(spacing: 10) {
-                                ProgressView().tint(Color.appAccent)
-                                Text(String(localized: "Generating prompt..."))
-                                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                                    .foregroundStyle(Color.appTextSecondary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-
-                        if let err = generationError {
-                            Text(err)
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
-                                .foregroundStyle(.red)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-
-                        if !generatedPrompt.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(String(localized: "Generated Prompt"))
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(Color.appAccent)
-                                Text(generatedPrompt)
-                                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                                    .foregroundStyle(Color.appText)
-                                    .padding(12)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color.appCard)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                                Button {
-                                    onSelectPrompt(generatedPrompt)
-                                    dismiss()
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                        Text(String(localized: "Use this prompt"))
-                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                                    }
-                                    .foregroundStyle(Color.appBackground)
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 12)
-                                    .background(Color.appAccent)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 20)
                 }
 
                 Spacer(minLength: 0)
+
+                // Error message above input bar
+                if let err = generationError {
+                    Text(err)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 6)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
+
                 inputBar
             }
+
+            // MARK: - Loading overlay
+            if isGenerating {
+                promptLoadingOverlay
+                    .transition(.opacity)
+            }
+
+            // MARK: - Result overlay
+            if showResult {
+                promptResultOverlay
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
+        .animation(.easeInOut(duration: 0.3), value: isGenerating)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: showResult)
+        .animation(.easeOut(duration: 0.2), value: generationError != nil)
         .tint(Color.appAccent)
         .onAppear {
             if inputText.isEmpty && !currentPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -168,6 +148,8 @@ struct ExplorePromptsView: View {
             }
         }
     }
+
+    // MARK: - Category card
 
     private func typeCard(_ type: PromptType) -> some View {
         let isSelected = selectedType?.id == type.id
@@ -190,7 +172,7 @@ struct ExplorePromptsView: View {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(
                         LinearGradient(
-                            colors: type.gradient.map { $0.opacity(isSelected ? 1.0 : 0.6) },
+                            colors: type.gradient.map { $0.opacity(isSelected ? 1.0 : 0.3) },
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -199,12 +181,23 @@ struct ExplorePromptsView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(isSelected ? Color.white.opacity(0.5) : Color.clear, lineWidth: 2)
+                    .stroke(
+                        isSelected
+                            ? LinearGradient(
+                                colors: [type.gradient.first ?? .white, .white.opacity(0.6)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                              )
+                            : LinearGradient(colors: [Color.clear], startPoint: .top, endPoint: .bottom),
+                        lineWidth: isSelected ? 2 : 0
+                    )
             )
             .scaleEffect(isSelected ? 1.05 : 1.0)
         }
         .buttonStyle(.plain)
     }
+
+    // MARK: - Input bar
 
     private var inputBar: some View {
         VStack(spacing: 0) {
@@ -257,6 +250,192 @@ struct ExplorePromptsView: View {
         .background(Color.appBackground)
     }
 
+    // MARK: - Loading overlay
+
+    private var promptLoadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.6)
+                .ignoresSafeArea()
+
+            RoundedRectangle(cornerRadius: 24)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(hex: "3B3228").opacity(0.94),
+                            Color(hex: "2A231B").opacity(0.92),
+                            Color(hex: "1E1A14").opacity(0.9),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 220, height: 180)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.appAccent.opacity(0.7),
+                                    Color.appAccentSecondary.opacity(0.4),
+                                    Color.appAccent.opacity(0.7),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.2
+                        )
+                )
+                .shadow(color: Color.appAccent.opacity(0.25), radius: 20, y: 8)
+
+            VStack(spacing: 18) {
+                TimelineView(.animation(minimumInterval: 1 / 60, paused: false)) { context in
+                    let t = context.date.timeIntervalSinceReferenceDate
+                    let pulseScale = 0.94 + 0.14 * (0.5 + 0.5 * sin(t * 2.5))
+                    let ringRotation = (t * 180).truncatingRemainder(dividingBy: 360)
+
+                    ZStack {
+                        Circle()
+                            .stroke(Color.appAccent.opacity(0.18), lineWidth: 2)
+                            .frame(width: 72, height: 72)
+                            .scaleEffect(pulseScale)
+
+                        Circle()
+                            .trim(from: 0.15, to: 0.85)
+                            .stroke(
+                                AngularGradient(
+                                    colors: [
+                                        Color.appAccent,
+                                        Color.appAccentSecondary,
+                                        Color.appAccent.opacity(0.25),
+                                        Color.appAccent,
+                                    ],
+                                    center: .center
+                                ),
+                                style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
+                            )
+                            .frame(width: 58, height: 58)
+                            .rotationEffect(.degrees(ringRotation))
+
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 22, weight: .medium))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Color.appAccent, Color.appAccentSecondary],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    }
+                }
+
+                Text(String(localized: "Generating prompt..."))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.appText)
+            }
+        }
+    }
+
+    // MARK: - Result overlay
+
+    private var promptResultOverlay: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation { showResult = false }
+                }
+
+            VStack(spacing: 0) {
+                // Drag handle
+                Capsule()
+                    .fill(Color.appTextSecondary.opacity(0.4))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 10)
+                    .padding(.bottom, 16)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(String(localized: "Generated Prompt"))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.appAccent)
+
+                    ScrollView(.vertical, showsIndicators: true) {
+                        Text(generatedPrompt)
+                            .font(.system(size: 15, weight: .regular, design: .rounded))
+                            .foregroundStyle(Color.appText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 200)
+                    .padding(14)
+                    .background(Color.appPromptBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Color.appDivider, lineWidth: 1)
+                    )
+
+                    // Use this prompt button
+                    Button {
+                        onSelectPrompt(generatedPrompt)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text(String(localized: "Use this prompt"))
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.appAccent, Color.appAccentSecondary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    .buttonStyle(.plain)
+
+                    // Re-generate button
+                    Button {
+                        withAnimation { showResult = false }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            submitInput()
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text(String(localized: "Re-generate"))
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundStyle(Color.appText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.appCard)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.appDivider, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 34)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color.appBackground)
+                    .shadow(color: .black.opacity(0.4), radius: 20, y: -4)
+            )
+        }
+    }
+
+    // MARK: - Logic
+
     private var canSubmit: Bool {
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -267,6 +446,7 @@ struct ExplorePromptsView: View {
 
         generationError = nil
         generatedPrompt = ""
+        showResult = false
         isGenerating = true
 
         let category = selectedType?.label
@@ -281,6 +461,8 @@ struct ExplorePromptsView: View {
                 generatedPrompt = response.generated_prompt
                 if generatedPrompt.isEmpty {
                     generationError = String(localized: "No prompt was generated.")
+                } else {
+                    withAnimation { showResult = true }
                 }
             case .failure(let err):
                 generationError = err.localizedDescription

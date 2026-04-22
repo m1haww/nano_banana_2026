@@ -47,6 +47,7 @@
 "Drag horizontally to compare images" = "Arraste horizontalmente para comparar imagens";
 "Drag the slider to compare the original with a clean AI cutout—perfect for products and profiles." = "Arraste o controlo deslizante para comparar o original com um recorte IA limpo—perfeito para produtos e perfis.";
 "Download" = "Descarregar";
+"Edit 10" = "Editar 10";
 "Edit Prompt" = "Editar prompt";
 "Edited photos and videos" = "Fotos e vídeos editados";
 "Enter Prompt" = "Introduzir prompt";
@@ -180,13 +181,18 @@
 "Take a look at these fun ways that people are using Nano Banana on Gemini to reimagine their photos." = "Dê uma olhada nestas formas divertidas que as pessoas estão a usar Nano Banana no Gemini para reimaginar as suas fotos.";
 
 /* Aspect ratio labels (Poyo / UI) */
+"auto" = "Auto";
 "1:1" = "1:1";
+"1:4" = "1:4";
+"1:8" = "1:8";
 "2:3" = "2:3";
 "3:2" = "3:2";
 "3:4" = "3:4";
+"4:1" = "4:1";
 "4:3" = "4:3";
 "4:5" = "4:5";
 "5:4" = "5:4";
+"8:1" = "8:1";
 "9:16" = "9:16";
 "16:9" = "16:9";
 "21:9" = "21:9";
@@ -197,3 +203,10 @@
 "People and characters" = "Pessoas e personagens";
 "Magic, creatures, worlds" = "Magia, criaturas, mundos";
 "Clean and simple visuals" = "Visuais limpos e simples";
+
+"Resolution" = "Resolução";
+"1K" = "1K";
+"2K" = "2K";
+"4K" = "4K";
+
+"Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "A tua imagem está a ser gerada. Podes continuar a usar a app à vontade — avisamos-te quando estiver pronta!";

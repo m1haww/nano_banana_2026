@@ -5,7 +5,7 @@ import AVFoundation
 final class FileService: NSObject, URLSessionDataDelegate {
     static let shared = FileService()
 
-    private let baseUrl = "https://nano-banana-api-production-fa0e.up.railway.app"
+    private let baseUrl = "https://nano-banana-api-production-4035.up.railway.app"
 
     private lazy var backgroundSession: URLSession = {
         let config = URLSessionConfiguration.background(withIdentifier: "com.ai.image.generator.nano.upload")

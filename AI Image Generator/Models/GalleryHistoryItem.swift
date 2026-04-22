@@ -1,12 +1,20 @@
 import Foundation
 
-struct GalleryHistoryItem: Codable, Identifiable {
+enum GalleryItemStatus: String, Codable {
+    case pending = "pending"
+    case success = "success"
+    case failed = "failed"
+}
+
+struct GalleryHistoryItem: Codable, Identifiable, Equatable {
     let id: UUID
-    let imagePath: String
+    var imagePath: String
     let prompt: String
     let timestamp: Date
     let isAIGenerated: Bool
     let originalImagePath: String?
+    var taskId: String?
+    var status: GalleryItemStatus
 
     init(
         id: UUID = UUID(),
@@ -14,7 +22,9 @@ struct GalleryHistoryItem: Codable, Identifiable {
         prompt: String,
         timestamp: Date = Date(),
         isAIGenerated: Bool = true,
-        originalImagePath: String? = nil
+        originalImagePath: String? = nil,
+        taskId: String? = nil,
+        status: GalleryItemStatus = .success
     ) {
         self.id = id
         self.imagePath = imagePath
@@ -22,6 +32,8 @@ struct GalleryHistoryItem: Codable, Identifiable {
         self.timestamp = timestamp
         self.isAIGenerated = isAIGenerated
         self.originalImagePath = originalImagePath
+        self.taskId = taskId
+        self.status = status
     }
 
     var formattedDate: String {

@@ -27,7 +27,6 @@ struct ProfileView: View {
             }
         }
         .background(Color.appBackground)
-        .onAppear { subscription.fetchStatus() }
         .fullScreenCover(item: $selectedGalleryItem) { item in
             GalleryDetailView(
                 item: item,
@@ -225,23 +224,26 @@ private struct ProfileHistoryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ZStack {
-                if let img = gallery.loadImage(from: item.imagePath) {
-                    Image(uiImage: img)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 200, maxHeight: 260)
-                        .clipped()
-                } else {
-                    Color.appPromptBackground
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .overlay(
-                            Image(systemName: "photo.on.rectangle.angled")
-                                .font(.system(size: 36, weight: .light))
-                                .foregroundStyle(Color.appTextSecondary.opacity(0.6))
-                        )
+            ZStack(alignment: .topTrailing) {
+                // Image content based on status
+                Group {
+                    switch item.status {
+                    case .success:
+                        if let img = gallery.loadImage(from: item.imagePath) {
+                            Image(uiImage: img)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: 200, maxHeight: 260)
+                                .clipped()
+                        } else {
+                            placeholderView
+                        }
+                    case .pending:
+                        loadingView
+                    case .failed:
+                        placeholderView
+                    }
                 }
 
                 LinearGradient(
@@ -254,6 +256,10 @@ private struct ProfileHistoryCard: View {
                     endPoint: .bottom
                 )
                 .allowsHitTesting(false)
+
+                // Status badge
+                statusBadge
+                    .padding(12)
             }
             .frame(maxWidth: .infinity)
             .clipShape(
@@ -286,5 +292,89 @@ private struct ProfileHistoryCard: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
         .shadow(color: .black.opacity(0.45), radius: 18, x: 0, y: 10)
+    }
+
+    // MARK: - Status Badge
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        HStack(spacing: 6) {
+            switch item.status {
+            case .success:
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                Text(String(localized: "Success"))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+            case .pending:
+                ProgressView()
+                    .scaleEffect(0.7)
+                Text(String(localized: "Pending"))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+            case .failed:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                Text(String(localized: "Failed"))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+            }
+        }
+        .foregroundStyle(statusForegroundColor)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(statusBackgroundColor)
+        )
+        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+    }
+
+    private var statusBackgroundColor: Color {
+        switch item.status {
+        case .success:
+            return Color.green.opacity(0.2)
+        case .pending:
+            return Color.orange.opacity(0.2)
+        case .failed:
+            return Color.red.opacity(0.2)
+        }
+    }
+
+    private var statusForegroundColor: Color {
+        switch item.status {
+        case .success:
+            return Color.green
+        case .pending:
+            return Color.orange
+        case .failed:
+            return Color.red
+        }
+    }
+
+    // MARK: - Placeholder Views
+
+    private var placeholderView: some View {
+        Color.appPromptBackground
+            .frame(maxWidth: .infinity)
+            .frame(height: 200)
+            .overlay(
+                Image(systemName: "photo.on.rectangle.angled")
+                    .font(.system(size: 36, weight: .light))
+                    .foregroundStyle(Color.appTextSecondary.opacity(0.6))
+            )
+    }
+
+    private var loadingView: some View {
+        Color.appPromptBackground
+            .frame(maxWidth: .infinity)
+            .frame(height: 200)
+            .overlay(
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .tint(Color.appAccent)
+                    Text(String(localized: "Generating..."))
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.appTextSecondary)
+                }
+            )
     }
 }

@@ -1,8 +1,3 @@
-//
-//  CreateView.swift
-//  AI Image Generator
-//
-
 import SwiftUI
 import PhotosUI
 
@@ -180,6 +175,72 @@ struct CreateView: View {
                         .padding(.horizontal, 20)
                     }
                 }
+
+                // Aspect ratio
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(String(localized: "Aspect Ratio"))
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.appText)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(AspectRatioOption.allCases, id: \.self) { ratio in
+                                Button {
+                                    viewModel.aspectRatio = ratio
+                                } label: {
+                                    Text(ratio.rawValue)
+                                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                                        .foregroundStyle(viewModel.aspectRatio == ratio ? .white : Color.appText)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            viewModel.aspectRatio == ratio
+                                                ? AnyShapeStyle(LinearGradient(colors: [Color.appAccent, Color.appAccentSecondary], startPoint: .leading, endPoint: .trailing))
+                                                : AnyShapeStyle(Color.appPromptBackground)
+                                        )
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(viewModel.aspectRatio == ratio ? Color.clear : Color.appDivider, lineWidth: 1)
+                                        )
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                // Resolution
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(String(localized: "Resolution"))
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.appText)
+
+                    HStack(spacing: 8) {
+                        ForEach(["1K", "2K", "4K"], id: \.self) { res in
+                            Button {
+                                viewModel.resolution = res
+                            } label: {
+                                Text(res)
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .foregroundStyle(viewModel.resolution == res ? .white : Color.appText)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        viewModel.resolution == res
+                                            ? AnyShapeStyle(LinearGradient(colors: [Color.appAccent, Color.appAccentSecondary], startPoint: .leading, endPoint: .trailing))
+                                            : AnyShapeStyle(Color.appPromptBackground)
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(viewModel.resolution == res ? Color.clear : Color.appDivider, lineWidth: 1)
+                                    )
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
 
                 // Generate button
                 Button {

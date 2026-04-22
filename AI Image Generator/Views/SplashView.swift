@@ -77,8 +77,14 @@ struct SplashView: View {
         
         await OnboardingCoordinator.shared.fetchOnboardingValue()
         
-        let credits = await UserService.shared.fetchUserCreditsIfRegistered()
-        subscriptionService.setCredits(credits ?? 0)
+        if let userData = await UserService.shared.fetchUserData() {
+            print("User credits: \(userData.user?.credits ?? 0)")
+            subscriptionService.setCredits(userData.user?.credits ?? 0)
+            if let tasks = userData.tasks {
+                VideoTaskService.shared.syncTasks(tasks)
+            }
+        }
+        VideoTaskService.shared.resumePollingForPendingTasks()
         
         AnalyticsManager.shared.logEvent(name: "app_launch")
         

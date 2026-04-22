@@ -47,6 +47,7 @@
 "Drag horizontally to compare images" = "Húzd vízszintesen a képek összehasonlításához";
 "Drag the slider to compare the original with a clean AI cutout—perfect for products and profiles." = "Húzd a csúszkát az eredeti és a tiszta AI-kivágás összehasonlításához — tökéletes termékekhez és profilokhoz.";
 "Download" = "Letöltés";
+"Edit 10" = "Szerkesztés 10";
 "Edit Prompt" = "Prompt szerkesztése";
 "Edited photos and videos" = "Szerkesztett fotók és videók";
 "Enter Prompt" = "Prompt megadása";
@@ -180,13 +181,18 @@
 "Take a look at these fun ways that people are using Nano Banana on Gemini to reimagine their photos." = "Nézd meg ezeket a szórakoztató módokat, ahogyan az emberek a Nano Banana-t használják a Geminiben fotóik újragondolásához.";
 
 /* Aspect ratio labels (Poyo / UI) */
+"auto" = "Auto";
 "1:1" = "1:1";
+"1:4" = "1:4";
+"1:8" = "1:8";
 "2:3" = "2:3";
 "3:2" = "3:2";
 "3:4" = "3:4";
+"4:1" = "4:1";
 "4:3" = "4:3";
 "4:5" = "4:5";
 "5:4" = "5:4";
+"8:1" = "8:1";
 "9:16" = "9:16";
 "16:9" = "16:9";
 "21:9" = "21:9";
@@ -197,3 +203,9 @@
 "People and characters" = "Emberek és karakterek";
 "Magic, creatures, worlds" = "Mágia, lények, világok";
 "Clean and simple visuals" = "Tiszta és egyszerű vizuális megjelenés";
+"Resolution" = "Felbontás";
+"1K" = "1K";
+"2K" = "2K";
+"4K" = "4K";
+
+"Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "A képed készül. Nyugodtan használd tovább az alkalmazást — értesítünk, amint elkészült!";
