@@ -32,7 +32,7 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView(initialPromptFromDiscover: $pendingPromptFromDiscover)
+            HomeView(initialPromptFromDiscover: $pendingPromptFromDiscover, selectedTab: $selectedTab)
                 .tabItem {
                     Label(MainTab.home.localizedTitle, systemImage: MainTab.home.icon)
                         .tint(Color.appAccent)

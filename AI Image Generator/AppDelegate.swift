@@ -79,6 +79,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         guard let data = await AppleAttributionService.shared.fetchAttributionData() else { return }
         guard data.attribution else { return }
         setRevenuecatAttributes(data: data)
+        
+        Purchases.shared.attribution.enableAdServicesAttributionTokenCollection()
     }
     
     private func getCurrentDate() -> String {

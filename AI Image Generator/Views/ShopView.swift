@@ -175,14 +175,6 @@ struct ShopView: View {
                 )
             }
             .padding(.horizontal, 20)
-
-            Button {
-                handleRestore()
-            } label: {
-                Text(String(localized: "Restore purchases"))
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.appTextSecondary)
-            }
             .padding(.bottom, 10)
         }
         .padding(.top, 14)
@@ -212,19 +204,6 @@ struct ShopView: View {
                 return
             }
             errorMessage = error?.localizedDescription ?? String(localized: "Purchase failed.")
-            showError = true
-        }
-    }
-
-    private func handleRestore() {
-        isPurchasing = true
-        subscription.restorePurchases { success, error in
-            isPurchasing = false
-            if success {
-                dismiss()
-                return
-            }
-            errorMessage = error?.localizedDescription ?? String(localized: "Nothing to restore.")
             showError = true
         }
     }

@@ -42,11 +42,11 @@ final class CreateViewModel: ObservableObject {
         isGenerating = true
         taskSubmitted = false
 
-        performGenerate(prompt: text, aspectRatio: aspectRatio.rawValue, resolution: resolution)
+        await performGenerate(prompt: text, aspectRatio: aspectRatio.rawValue, resolution: resolution)
     }
 
-    private func performGenerate(prompt: String, aspectRatio: String, resolution: String) {
-        api.createImage(prompt: prompt, image: referenceImage, aspectRatio: aspectRatio, resolution: resolution) { [weak self] result in
+    private func performGenerate(prompt: String, aspectRatio: String, resolution: String) async {
+        await api.createImage(prompt: prompt, image: referenceImage, aspectRatio: aspectRatio, resolution: resolution) { [weak self] result in
             guard let self = self else { return }
             self.isGenerating = false
 

@@ -241,6 +241,8 @@ final class GeminiAPIService: ObservableObject {
             throw APIError.encodingError
         }
         request.httpBody = bodyData
+        
+        print("Sending this request body: \(String(data: bodyData, encoding: .utf8)!)")
 
         let session = NetworkService.shared.safeSession()
         let (data, response) = try await session.data(for: request)
@@ -265,55 +267,48 @@ final class GeminiAPIService: ObservableObject {
     /// Fire-and-forget image generation.
     /// Submits the task, saves it via VideoTaskService, and returns immediately.
     /// The backend handles the Poyo callback and sends a push notification when done.
-    func createImage(prompt: String, image: UIImage? = nil, aspectRatio: String = "1:1", model: String = "nano-banana-2-new", resolution: String, completion: @escaping (Result<String, APIError>) -> Void) {
-        Task { [weak self] in
-            guard let self else {
-                await MainActor.run { completion(.failure(.invalidResponse)) }
-                return
-            }
-
-            // Upload reference image if present
-            var imageUrlStrings: [String]? = nil
-            if let image {
-                do {
-                    let uploaded = try await FileService.shared.uploadImage(image, uploadPrefix: "generate-input")
-                    guard let key = uploaded.key, !key.isEmpty else {
-                        await MainActor.run {
-                            completion(.failure(.serverError("Image upload did not return a file key")))
-                        }
-                        return
-                    }
-                    imageUrlStrings = [FileService.shared.getFileUrl(key: key)]
-                } catch {
+    func createImage(prompt: String, image: UIImage? = nil, aspectRatio: String = "1:1", model: String = "nano-banana-2-new", resolution: String, completion: @escaping (Result<String, APIError>) -> Void) async {
+        // Upload reference image if present
+        var imageUrlStrings: [String]? = nil
+        if let image {
+            do {
+                let uploaded = try await FileService.shared.uploadImage(image, uploadPrefix: "generate-input")
+                guard let key = uploaded.key, !key.isEmpty else {
                     await MainActor.run {
-                        completion(.failure(.networkError(error.localizedDescription)))
+                        completion(.failure(.serverError("Image upload did not return a file key")))
                     }
                     return
                 }
-            }
-
-            do {
-                let taskId = try await self.submitImageTask(
-                    prompt: prompt,
-                    imageUrls: imageUrlStrings,
-                    aspectRatio: aspectRatio,
-                    resolution: resolution,
-                    model: model,
-                    userId: UserService.shared.userId,
-                    fcmToken: UserService.shared.fcmToken
-                )
-
-                // Save as pending task
-                await VideoTaskService.shared.addPendingTask(
-                    VideoTask(id: taskId, userId: UserService.shared.userId, prompt: prompt)
-                )
-
-                await MainActor.run { completion(.success(taskId)) }
-            } catch let error as APIError {
-                await MainActor.run { completion(.failure(error)) }
+                imageUrlStrings = [FileService.shared.getFileUrl(key: key)]
             } catch {
-                await MainActor.run { completion(.failure(.networkError(error.localizedDescription))) }
+                await MainActor.run {
+                    completion(.failure(.networkError(error.localizedDescription)))
+                }
+                return
             }
+        }
+
+        do {
+            let taskId = try await self.submitImageTask(
+                prompt: prompt,
+                imageUrls: imageUrlStrings,
+                aspectRatio: aspectRatio,
+                resolution: resolution,
+                model: model,
+                userId: UserService.shared.userId,
+                fcmToken: UserService.shared.fcmToken
+            )
+
+            // Save as pending task
+            VideoTaskService.shared.addPendingTask(
+                VideoTask(id: taskId, userId: UserService.shared.userId, prompt: prompt)
+            )
+
+            await MainActor.run { completion(.success(taskId)) }
+        } catch let error as APIError {
+            await MainActor.run { completion(.failure(error)) }
+        } catch {
+            await MainActor.run { completion(.failure(.networkError(error.localizedDescription))) }
         }
     }
 
