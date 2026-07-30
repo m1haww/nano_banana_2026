@@ -473,7 +473,7 @@ struct HomeView: View {
                     viewModel.referenceImage = nil
                     viewModel.prompt = ""
                     try? await Task.sleep(for: .seconds(0.5))
-                    selectedTab = .profile
+                    selectedTab = .gallery
                 }
             } label: {
                 HStack(spacing: 10) {

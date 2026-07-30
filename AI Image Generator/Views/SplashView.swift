@@ -78,7 +78,6 @@ struct SplashView: View {
         await OnboardingCoordinator.shared.fetchOnboardingValue()
         
         if let userData = await UserService.shared.fetchUserData() {
-            print("User credits: \(userData.user?.credits ?? 0)")
             subscriptionService.setCredits(userData.user?.credits ?? 0)
             if let tasks = userData.tasks {
                 VideoTaskService.shared.syncTasks(tasks)

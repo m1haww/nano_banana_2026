@@ -40,7 +40,16 @@
       "subscriptions" : [
         {
           "adHocOffers" : [
-
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "displayPrice" : "0.99",
+              "internalID" : "CE5A8F86",
+              "numberOfPeriods" : 1,
+              "offerID" : "50_discount_price",
+              "paymentMode" : "payAsYouGo",
+              "referenceName" : "50% Discount",
+              "subscriptionPeriod" : "P1W"
+            }
           ],
           "billingPlans" : [
             {

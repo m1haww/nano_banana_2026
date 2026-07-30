@@ -4,13 +4,13 @@ import RevenueCatUI
 enum MainTab: String, Hashable {
     case home = "Home"
     case discover = "Discover"
-    case profile = "Profile"
+    case gallery = "Gallery"
 
     var localizedTitle: String {
         switch self {
         case .home: return String(localized: "Home")
         case .discover: return String(localized: "Discover")
-        case .profile: return String(localized: "Profile")
+        case .gallery: return String(localized: "Gallery")
         }
     }
 
@@ -18,7 +18,7 @@ enum MainTab: String, Hashable {
         switch self {
         case .home: return "house.fill"
         case .discover: return "circle.grid.2x2.fill"
-        case .profile: return "person.fill"
+        case .gallery: return "photo.stack.fill"
         }
     }
 }
@@ -39,7 +39,7 @@ struct ContentView: View {
                 }
                 .tag(MainTab.home)
             
-            GalleryView(onCreateVariant: { prompt in
+            DiscoverView(onCreateVariant: { prompt in
                 pendingPromptFromDiscover = prompt
                 selectedTab = .home
             })
@@ -49,12 +49,12 @@ struct ContentView: View {
             }
             .tag(MainTab.discover)
             
-            ProfileView()
+            GalleryView()
                 .tabItem {
-                    Label(MainTab.profile.localizedTitle, systemImage: MainTab.profile.icon)
+                    Label(MainTab.gallery.localizedTitle, systemImage: MainTab.gallery.icon)
                         .tint(Color.appAccent)
                 }
-                .tag(MainTab.profile)
+                .tag(MainTab.gallery)
         }
         .toolbarBackground(.visible, for: .tabBar)
         .sheet(isPresented: $shareService.isPresented, onDismiss: {
