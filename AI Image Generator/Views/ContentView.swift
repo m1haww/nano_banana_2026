@@ -4,12 +4,14 @@ import RevenueCatUI
 enum MainTab: String, Hashable {
     case home = "Home"
     case discover = "Discover"
+    case chat = "Chat"
     case profile = "Profile"
 
     var localizedTitle: String {
         switch self {
         case .home: return String(localized: "Home")
         case .discover: return String(localized: "Discover")
+        case .chat: return String(localized: "Chat")
         case .profile: return String(localized: "Profile")
         }
     }
@@ -18,6 +20,7 @@ enum MainTab: String, Hashable {
         switch self {
         case .home: return "house.fill"
         case .discover: return "circle.grid.2x2.fill"
+        case .chat: return "message.fill"
         case .profile: return "person.fill"
         }
     }
@@ -48,7 +51,14 @@ struct ContentView: View {
                     .tint(Color.appAccent)
             }
             .tag(MainTab.discover)
-            
+
+            ChatView()
+                .tabItem {
+                    Label(MainTab.chat.localizedTitle, systemImage: MainTab.chat.icon)
+                        .tint(Color.appAccent)
+                }
+                .tag(MainTab.chat)
+
             ProfileView()
                 .tabItem {
                     Label(MainTab.profile.localizedTitle, systemImage: MainTab.profile.icon)
@@ -56,7 +66,9 @@ struct ContentView: View {
                 }
                 .tag(MainTab.profile)
         }
+        .toolbarBackground(Color.appBackground, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .toolbarColorScheme(.dark, for: .tabBar)
         .sheet(isPresented: $shareService.isPresented, onDismiss: {
             shareService.clearPayload()
         }) {
