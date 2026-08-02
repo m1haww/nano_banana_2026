@@ -214,3 +214,14 @@
 "Clean and simple visuals" = "Čistá a jednoduchá grafika";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Váš obrázek se generuje. Můžete aplikaci dál používat — dáme vám vědět, až bude hotový!";
+
+/* Chat screen */
+"Chat" = "Chat";
+"Ask anything or describe an image…" = "Zeptejte se na cokoli nebo popište obrázek…";
+"Generating image…" = "Generování obrázku…";
+"Image generation failed" = "Generování obrázku selhalo";
+"Photo Library" = "Fotogalerie";
+"Camera" = "Fotoaparát";
+"Done" = "Hotovo";
+"Copy" = "Kopírovat";
+"Copied" = "Zkopírováno";

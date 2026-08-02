@@ -213,3 +213,14 @@
 "4K" = "4K";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Bildet ditt genereres nå. Du kan gjerne fortsette å bruke appen — vi gir deg beskjed når det er klart!";
+
+/* Chat screen */
+"Chat" = "Chat";
+"Ask anything or describe an image…" = "Spør om hva som helst, eller beskriv et bilde…";
+"Generating image…" = "Genererer bilde…";
+"Image generation failed" = "Bildegenerering mislyktes";
+"Photo Library" = "Fotobibliotek";
+"Camera" = "Kamera";
+"Done" = "Ferdig";
+"Copy" = "Kopier";
+"Copied" = "Kopiert";

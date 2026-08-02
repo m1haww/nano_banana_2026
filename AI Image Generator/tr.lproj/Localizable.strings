@@ -213,3 +213,14 @@
 "4K" = "4K";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Görseliniz oluşturuluyor. Uygulamayı rahatça kullanmaya devam edebilirsiniz — hazır olduğunda size haber vereceğiz!";
+
+/* Chat screen */
+"Chat" = "Sohbet";
+"Ask anything or describe an image…" = "Bir şey sorun veya bir görseli tanımlayın…";
+"Generating image…" = "Görsel oluşturuluyor…";
+"Image generation failed" = "Görsel oluşturulamadı";
+"Photo Library" = "Fotoğraf Kitaplığı";
+"Camera" = "Kamera";
+"Done" = "Tamam";
+"Copy" = "Kopyala";
+"Copied" = "Kopyalandı";

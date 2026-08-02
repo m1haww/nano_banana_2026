@@ -4,6 +4,7 @@ import AdSupport
 import AppTrackingTransparency
 import FirebaseCore
 import FirebaseMessaging
+import FirebaseAnalytics
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -22,6 +23,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             Task {
                 await setAppleSearchAdsAttribution()
             }
+        }
+        
+        let instanceID = Analytics.appInstanceID()
+        if let unwrapped = instanceID {
+            Purchases.shared.attribution.setFirebaseAppInstanceID(unwrapped)
         }
         
         Task { @MainActor in

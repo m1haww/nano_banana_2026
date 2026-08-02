@@ -214,3 +214,14 @@
 "Clean and simple visuals" = "Klare und einfache Visuals";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Dein Bild wird gerade generiert. Du kannst die App gerne weiter nutzen — wir benachrichtigen dich, sobald es fertig ist!";
+
+/* Chat screen */
+"Chat" = "Chat";
+"Ask anything or describe an image…" = "Frag etwas oder beschreibe ein Bild…";
+"Generating image…" = "Bild wird generiert…";
+"Image generation failed" = "Bildgenerierung fehlgeschlagen";
+"Photo Library" = "Fotomediathek";
+"Camera" = "Kamera";
+"Done" = "Fertig";
+"Copy" = "Kopieren";
+"Copied" = "Kopiert";

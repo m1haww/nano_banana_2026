@@ -213,3 +213,14 @@
 "4K" = "4K";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "A tua imagem está a ser gerada. Podes continuar a usar a app à vontade — avisamos-te quando estiver pronta!";
+
+/* Chat screen */
+"Chat" = "Chat";
+"Ask anything or describe an image…" = "Pergunta algo ou descreve uma imagem…";
+"Generating image…" = "A gerar imagem…";
+"Image generation failed" = "Falha na geração da imagem";
+"Photo Library" = "Biblioteca de fotos";
+"Camera" = "Câmara";
+"Done" = "Concluído";
+"Copy" = "Copiar";
+"Copied" = "Copiado";

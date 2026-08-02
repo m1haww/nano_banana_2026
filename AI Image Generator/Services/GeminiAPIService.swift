@@ -106,6 +106,64 @@ struct PoyoErrorDetail: Decodable {
     let type: String?
 }
 
+// MARK: - Chat streaming
+
+/// A single part inside a message — either plain text or an image URL.
+enum ChatContentPart {
+    case text(String)
+    case imageURL(String)
+
+    /// Serialises to the OpenAI multipart content format expected by Kie AI.
+    var jsonObject: [String: Any] {
+        switch self {
+        case .text(let t):
+            return ["type": "text", "text": t]
+        case .imageURL(let url):
+            return ["type": "image_url", "image_url": ["url": url]]
+        }
+    }
+}
+
+struct ChatMessage: Equatable {
+    let role: String          // "user" or "assistant"
+    let parts: [ChatContentPart]
+
+    /// Convenience init for text-only messages (assistant replies, simple user messages).
+    init(role: String, text: String) {
+        self.role = role
+        self.parts = [.text(text)]
+    }
+
+    /// Init for messages with optional image.
+    init(role: String, text: String, imageURL: String?) {
+        self.role = role
+        var p: [ChatContentPart] = []
+        if !text.isEmpty { p.append(.text(text)) }
+        if let url = imageURL { p.append(.imageURL(url)) }
+        self.parts = p
+    }
+
+    static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
+        lhs.role == rhs.role
+    }
+
+    /// Serialised form sent to the backend.
+    var jsonObject: [String: Any] {
+        if parts.count == 1, case .text(let t) = parts[0] {
+            // Simple string content — avoids unnecessarily wrapping text-only messages
+            return ["role": role, "content": t]
+        }
+        return ["role": role, "content": parts.map { $0.jsonObject }]
+    }
+}
+
+enum ChatStreamEvent {
+    case text(String)
+    case toolCall(prompt: String)
+    case done
+    case error(String)
+}
+
 // MARK: - Prompt Assistant (Explore Prompts chat + save)
 
 struct PromptAssistantChatRequest: Encodable {
@@ -246,6 +304,8 @@ final class GeminiAPIService: ObservableObject {
 
         let session = NetworkService.shared.safeSession()
         let (data, response) = try await session.data(for: request)
+        
+        print("Got this response data: \(String(data: data, encoding: .utf8)!))")
 
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             let msg: String
@@ -312,6 +372,45 @@ final class GeminiAPIService: ObservableObject {
         }
     }
 
+    /// Submits an image generation task, registers it in GalleryService, polls until finished,
+    /// then saves the result to the gallery. Pass `imageURLs` to reuse an already-uploaded image.
+    /// Returns the finished image URL on success.
+    func generateImageAndPoll(
+        prompt: String,
+        imageURLs: [String]? = nil,
+        aspectRatio: String = "1:1",
+        resolution: String = "1K"
+    ) async throws -> String {
+        let taskId = try await submitImageTask(
+            prompt: prompt,
+            imageUrls: imageURLs,
+            aspectRatio: aspectRatio,
+            resolution: resolution,
+            model: "nano-banana-2-new",
+            userId: UserService.shared.userId,
+            fcmToken: UserService.shared.fcmToken
+        )
+
+        await MainActor.run {
+            GalleryService.shared.addPendingItem(taskId: taskId, prompt: prompt)
+        }
+
+        let result = await pollTaskStatus(taskId: taskId)
+        switch result {
+        case .success(let statusData):
+            guard let file = statusData.files.first(where: { $0.file_type == "image" }) ?? statusData.files.first,
+                  let imageURL = URL(string: file.file_url) else {
+                await MainActor.run { GalleryService.shared.markItemFailed(taskId: taskId) }
+                throw APIError.serverError("No image in completed task")
+            }
+            await GalleryService.shared.completeItem(taskId: taskId, imageURL: imageURL)
+            return file.file_url
+        case .failure(let error):
+            await MainActor.run { GalleryService.shared.markItemFailed(taskId: taskId) }
+            throw error
+        }
+    }
+
     /// Polls the backend for task status. Returns the file URL on success.
     /// Intended to be called from a background Task (not blocking UI).
     func pollTaskStatus(taskId: String, pollInterval: TimeInterval = 10, timeout: TimeInterval = 300) async -> Result<PoyoStatusData, APIError> {
@@ -327,6 +426,7 @@ final class GeminiAPIService: ObservableObject {
         while Date().timeIntervalSince(start) <= timeout {
             do {
                 let (data, response) = try await session.data(for: request)
+                print("Got this polling response: \(String(decoding: data, as: UTF8.self))")
                 guard let http = response as? HTTPURLResponse, http.statusCode == 200,
                       let statusResp = try? JSONDecoder().decode(PoyoStatusResponse.self, from: data) else {
                     try await Task.sleep(nanoseconds: sleepNs)
@@ -346,6 +446,93 @@ final class GeminiAPIService: ObservableObject {
             }
         }
         return .failure(.serverError("Generation timed out"))
+    }
+
+    // MARK: - Chat streaming
+
+    /// Streams chat events from /api/chat until a `.done` or `.error` event is received.
+    /// Yields `.text(delta)` for each streamed word, `.toolCall(prompt:)` when the model
+    /// wants to generate an image, then `.done` when the stream is finished.
+    func streamChat(messages: [ChatMessage]) -> AsyncStream<ChatStreamEvent> {
+        AsyncStream { continuation in
+            Task {
+                guard let url = URL(string: "\(backendBaseURL)/api/chat") else {
+                    continuation.yield(.error("Invalid URL"))
+                    continuation.finish()
+                    return
+                }
+
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+                request.timeoutInterval = 120
+
+                let payload: [String: Any] = [
+                    "messages": messages.map { $0.jsonObject }
+                ]
+                guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+                    continuation.yield(.error("Failed to encode messages"))
+                    continuation.finish()
+                    return
+                }
+                request.httpBody = body
+
+                do {
+                    let session = NetworkService.shared.safeSession()
+                    let (bytes, response) = try await session.bytes(for: request)
+
+                    guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                        continuation.yield(.error("Server returned non-200 response"))
+                        continuation.finish()
+                        return
+                    }
+
+                    for try await line in bytes.lines {
+                        // SSE lines are prefixed with "data: "
+                        guard line.hasPrefix("data: ") else { continue }
+                        let jsonStr = String(line.dropFirst(6))
+
+                        guard
+                            let data = jsonStr.data(using: .utf8),
+                            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                            let type_ = obj["type"] as? String
+                        else { continue }
+
+                        switch type_ {
+                        case "text":
+                            if let delta = obj["delta"] as? String {
+                                continuation.yield(.text(delta))
+                            }
+                        case "tool_call":
+                            if let args = obj["arguments"] as? [String: Any],
+                               let prompt = args["prompt"] as? String {
+                                continuation.yield(.toolCall(prompt: prompt))
+                            }
+                        case "done":
+                            continuation.yield(.done)
+                            continuation.finish()
+                            return
+                        case "error":
+                            let msg = obj["message"] as? String ?? "Unknown error"
+                            continuation.yield(.error(msg))
+                            continuation.finish()
+                            return
+                        default:
+                            break
+                        }
+                    }
+
+                    // Stream ended without explicit done
+                    continuation.yield(.done)
+                    continuation.finish()
+
+                } catch {
+                    continuation.yield(.error(error.localizedDescription))
+                    continuation.finish()
+                }
+            }
+        }
     }
 
     func fetchDiscover(completion: @escaping (Result<[DiscoverItem], APIError>) -> Void) {

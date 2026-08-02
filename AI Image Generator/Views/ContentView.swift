@@ -3,12 +3,14 @@ import RevenueCatUI
 
 enum MainTab: String, Hashable {
     case home = "Home"
+    case chat = "Chat"
     case discover = "Discover"
     case gallery = "Gallery"
 
     var localizedTitle: String {
         switch self {
         case .home: return String(localized: "Home")
+        case .chat: return String(localized: "Chat")
         case .discover: return String(localized: "Discover")
         case .gallery: return String(localized: "Gallery")
         }
@@ -17,6 +19,7 @@ enum MainTab: String, Hashable {
     var icon: String {
         switch self {
         case .home: return "house.fill"
+        case .chat: return "bubble.left.and.bubble.right.fill"
         case .discover: return "circle.grid.2x2.fill"
         case .gallery: return "photo.stack.fill"
         }
@@ -39,6 +42,12 @@ struct ContentView: View {
                 }
                 .tag(MainTab.home)
             
+            ChatView()
+                .tabItem {
+                    Label(MainTab.chat.localizedTitle, systemImage: MainTab.chat.icon)
+                }
+                .tag(MainTab.chat)
+
             DiscoverView(onCreateVariant: { prompt in
                 pendingPromptFromDiscover = prompt
                 selectedTab = .home

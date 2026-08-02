@@ -213,3 +213,14 @@
 "4K" = "4K";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Imaginea ta este în curs de generare. Poți continua să folosești aplicația fără probleme — te anunțăm când este gata!";
+
+/* Chat screen */
+"Chat" = "Chat";
+"Ask anything or describe an image…" = "Întreabă orice sau descrie o imagine…";
+"Generating image…" = "Se generează imaginea…";
+"Image generation failed" = "Generarea imaginii a eșuat";
+"Photo Library" = "Bibliotecă foto";
+"Camera" = "Cameră";
+"Done" = "Gata";
+"Copy" = "Copiază";
+"Copied" = "Copiat";

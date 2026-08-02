@@ -212,3 +212,14 @@
 "4K" = "4K";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "A képed készül. Nyugodtan használd tovább az alkalmazást — értesítünk, amint elkészült!";
+
+/* Chat screen */
+"Chat" = "Chat";
+"Ask anything or describe an image…" = "Kérdezz bármit, vagy írj le egy képet…";
+"Generating image…" = "Kép generálása…";
+"Image generation failed" = "A kép generálása sikertelen";
+"Photo Library" = "Fotótár";
+"Camera" = "Kamera";
+"Done" = "Kész";
+"Copy" = "Másolás";
+"Copied" = "Másolva";

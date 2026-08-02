@@ -214,3 +214,14 @@
 "Clean and simple visuals" = "Rene og enkle visualiseringer";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Dit billede er ved at blive genereret. Du er velkommen til at fortsætte med at bruge appen — vi giver dig besked, når det er klart!";
+
+/* Chat screen */
+"Chat" = "Chat";
+"Ask anything or describe an image…" = "Spørg om hvad som helst, eller beskriv et billede…";
+"Generating image…" = "Genererer billede…";
+"Image generation failed" = "Billedgenerering mislykkedes";
+"Photo Library" = "Fotobibliotek";
+"Camera" = "Kamera";
+"Done" = "Færdig";
+"Copy" = "Kopiér";
+"Copied" = "Kopieret";

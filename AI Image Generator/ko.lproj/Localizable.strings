@@ -213,3 +213,14 @@
 "4K" = "4K";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "이미지를 생성하고 있습니다. 앱을 계속 사용하셔도 괜찮습니다 — 완료되면 알려드릴게요!";
+
+/* Chat screen */
+"Chat" = "채팅";
+"Ask anything or describe an image…" = "무엇이든 물어보거나 이미지를 설명하세요…";
+"Generating image…" = "이미지 생성 중…";
+"Image generation failed" = "이미지 생성 실패";
+"Photo Library" = "사진 보관함";
+"Camera" = "카메라";
+"Done" = "완료";
+"Copy" = "복사";
+"Copied" = "복사됨";

@@ -213,3 +213,14 @@
 "4K" = "4K";
 
 "Your image is being generated. Feel free to keep using the app — we'll notify you when it's ready!" = "Kuvaasi luodaan parhaillaan. Voit huoletta jatkaa sovelluksen käyttöä — ilmoitamme sinulle, kun se on valmis!";
+
+/* Chat screen */
+"Chat" = "Chat";
+"Ask anything or describe an image…" = "Kysy mitä tahansa tai kuvaile kuvaa…";
+"Generating image…" = "Luodaan kuvaa…";
+"Image generation failed" = "Kuvan luominen epäonnistui";
+"Photo Library" = "Kuvagalleria";
+"Camera" = "Kamera";
+"Done" = "Valmis";
+"Copy" = "Kopioi";
+"Copied" = "Kopioitu";

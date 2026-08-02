@@ -215,3 +215,14 @@
 "People and characters" = "People and characters";
 "Magic, creatures, worlds" = "Magic, creatures, worlds";
 "Clean and simple visuals" = "Clean and simple visuals";
+
+/* Chat screen */
+"Chat" = "Chat";
+"Ask anything or describe an image…" = "Ask anything or describe an image…";
+"Generating image…" = "Generating image…";
+"Image generation failed" = "Image generation failed";
+"Photo Library" = "Photo Library";
+"Camera" = "Camera";
+"Done" = "Done";
+"Copy" = "Copy";
+"Copied" = "Copied";
