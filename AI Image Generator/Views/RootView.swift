@@ -51,9 +51,10 @@ struct RootView: View {
                                 subscriptionService.addCredits(credits)
                             }
                         }
+                        
+                        subscriptionService.fetchStatus()
+                        subscriptionService.showPaywall = false
                     }
-                    subscriptionService.fetchStatus()
-                    subscriptionService.showPaywall = false
                 }
         }
         .fullScreenCover(isPresented: $subscriptionService.showShop) {
